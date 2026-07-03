@@ -4,6 +4,7 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
@@ -11,6 +12,7 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
 import { Header } from '#/components/layout/Header'
 import { Footer } from '#/components/layout/Footer'
+import { Toaster } from '#/components/ui/sonner'
 import { categoriesQuery } from '#/lib/query'
 
 import appCss from '../styles.css?url'
@@ -31,7 +33,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
   // Categories power the header/mega-menu on every route — ensure for SSR.
-  loader: ({ context }) => context.queryClient.ensureQueryData(categoriesQuery()),
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(categoriesQuery()),
   notFoundComponent: NotFound,
   errorComponent: ErrorBoundary,
   shellComponent: RootDocument,
@@ -68,22 +71,31 @@ function ErrorBoundary({ error }: { error: Error }) {
 }
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const isAdmin = useRouterState({
+    select: (state) => state.location.pathname.startsWith('/admin'),
+  })
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
       <body className="flex min-h-screen flex-col">
-        <Header />
+        {isAdmin ? null : <Header />}
         <main className="flex-1">{children ?? <Outlet />}</main>
-        <Footer />
-        <TanStackDevtools
-          config={{ position: 'bottom-right' }}
-          plugins={[
-            { name: 'Tanstack Router', render: <TanStackRouterDevtoolsPanel /> },
-            TanStackQueryDevtools,
-          ]}
-        />
+        {isAdmin ? null : <Footer />}
+        <Toaster />
+        {isAdmin ? null : (
+          <TanStackDevtools
+            config={{ position: 'bottom-right' }}
+            plugins={[
+              {
+                name: 'Tanstack Router',
+                render: <TanStackRouterDevtoolsPanel />,
+              },
+              TanStackQueryDevtools,
+            ]}
+          />
+        )}
         <Scripts />
       </body>
     </html>

@@ -1,13 +1,16 @@
 import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
 import { login, register } from '#/lib/api'
 import { useAuth } from '#/stores/auth'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
+import { safeAdminRedirect } from '#/lib/admin-auth'
 
 export const Route = createFileRoute('/login')({
+  validateSearch: z.object({ redirect: z.string().optional() }),
   component: LoginPage,
 })
 
@@ -18,6 +21,7 @@ function LoginPage() {
   const [username, setUsername] = useState('')
   const setSession = useAuth((s) => s.setSession)
   const navigate = useNavigate()
+  const { redirect } = Route.useSearch()
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -26,6 +30,10 @@ function LoginPage() {
         : register({ email, password, username: username || undefined }),
     onSuccess: (session) => {
       setSession(session)
+      if (redirect) {
+        window.location.assign(safeAdminRedirect(redirect))
+        return
+      }
       navigate({ to: '/account' })
     },
   })

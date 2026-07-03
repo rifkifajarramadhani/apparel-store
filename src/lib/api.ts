@@ -5,10 +5,19 @@ import type { Session } from '#/types/auth'
 import type {
   Category,
   Colorway,
+  Collection,
   Paged,
   Product,
   ProductFilters,
+  SizeScale,
+  Sku,
 } from '#/types/catalog'
+import type {
+  CategoryInput,
+  CollectionInput,
+  ProductAggregateInput,
+  SkuInput,
+} from '#/services/schemas/admin'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
@@ -31,6 +40,29 @@ async function get<T>(path: string): Promise<{ data: T; total: number }> {
   return { data: (await res.json()) as T, total }
 }
 
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    ...init,
+    headers: {
+      ...authHeaders(),
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init.headers,
+    },
+  })
+  const data: unknown = await res.json().catch(() => null)
+  if (!res.ok) {
+    const message =
+      typeof data === 'object' &&
+      data !== null &&
+      'error' in data &&
+      typeof data.error === 'string'
+        ? data.error
+        : `API ${res.status} on ${path}`
+    throw new Error(message)
+  }
+  return data as T
+}
+
 // Auth: json-server-auth returns { accessToken, user } on success, else 4xx with a message.
 async function authPost(path: string, body: unknown): Promise<Session> {
   const res = await fetch(`${BASE}${path}`, {
@@ -39,7 +71,8 @@ async function authPost(path: string, body: unknown): Promise<Session> {
     body: JSON.stringify(body),
   })
   const data = await res.json()
-  if (!res.ok) throw new Error(typeof data === 'string' ? data : 'Authentication failed')
+  if (!res.ok)
+    throw new Error(typeof data === 'string' ? data : 'Authentication failed')
   return data as Session
 }
 
@@ -71,7 +104,9 @@ function toQuery(f: ProductFilters): string {
   return s ? `?${s}` : ''
 }
 
-export async function getProducts(f: ProductFilters = {}): Promise<Paged<Product>> {
+export async function getProducts(
+  f: ProductFilters = {},
+): Promise<Paged<Product>> {
   const { data, total } = await get<Product[]>(`/products${toQuery(f)}`)
   // json-server only sends X-Total-Count when paginated; else total = list length.
   return { items: data, total: f.limit ? total : data.length }
@@ -83,13 +118,19 @@ export async function getProduct(id: string): Promise<Product> {
 }
 
 // Resolve a product by its slug (routes carry the slug, not the style code).
-export async function getProductBySlug(slug: string): Promise<Product | undefined> {
-  const { data } = await get<Product[]>(`/products?slug=${encodeURIComponent(slug)}`)
+export async function getProductBySlug(
+  slug: string,
+): Promise<Product | undefined> {
+  const { data } = await get<Product[]>(
+    `/products?slug=${encodeURIComponent(slug)}`,
+  )
   return data[0]
 }
 
 export async function getColorways(productId: string): Promise<Colorway[]> {
-  const { data } = await get<Colorway[]>(`/colorways?productId=${productId}&_embed=skus`)
+  const { data } = await get<Colorway[]>(
+    `/colorways?productId=${productId}&_embed=skus`,
+  )
   return data
 }
 
@@ -97,6 +138,93 @@ export async function getCategoryTree(): Promise<Category[]> {
   const { data } = await get<Category[]>('/categories')
   return data
 }
+
+export async function getCollections(): Promise<Collection[]> {
+  const { data } = await get<Collection[]>('/collections')
+  return data
+}
+
+export async function getSizeScales(): Promise<SizeScale[]> {
+  const { data } = await get<SizeScale[]>('/sizeScales')
+  return data
+}
+
+export async function getSkus(
+  filters: { productId?: string; colorwayId?: string } = {},
+): Promise<Sku[]> {
+  const params = new URLSearchParams()
+  if (filters.productId) params.set('productId', filters.productId)
+  if (filters.colorwayId) params.set('colorwayId', filters.colorwayId)
+  const suffix = params.size ? `?${params}` : ''
+  const { data } = await get<Sku[]>(`/skus${suffix}`)
+  return data
+}
+
+export const getProductAggregate = (productId: string) =>
+  request<ProductAggregateInput>(
+    `/admin/products/${encodeURIComponent(productId)}`,
+  )
+
+export const createProductAggregate = (input: ProductAggregateInput) =>
+  request<ProductAggregateInput>('/admin/products', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+
+export const updateProductAggregate = (input: ProductAggregateInput) =>
+  request<ProductAggregateInput>(
+    `/admin/products/${encodeURIComponent(input.product.id)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    },
+  )
+
+export const deleteProduct = (productId: string) =>
+  request<{ success: boolean }>(
+    `/admin/products/${encodeURIComponent(productId)}`,
+    { method: 'DELETE' },
+  )
+
+export const updateSku = (sku: SkuInput) =>
+  request<Sku>(`/skus/${encodeURIComponent(sku.id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(sku),
+  })
+
+export const createCategory = (category: CategoryInput) =>
+  request<Category>('/categories', {
+    method: 'POST',
+    body: JSON.stringify(category),
+  })
+
+export const updateCategory = (category: CategoryInput) =>
+  request<Category>(`/categories/${encodeURIComponent(category.id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(category),
+  })
+
+export const deleteCategory = (id: string) =>
+  request<Category>(`/categories/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+
+export const createCollection = (collection: CollectionInput) =>
+  request<Collection>('/collections', {
+    method: 'POST',
+    body: JSON.stringify(collection),
+  })
+
+export const updateCollection = (collection: CollectionInput) =>
+  request<Collection>(`/collections/${encodeURIComponent(collection.id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(collection),
+  })
+
+export const deleteCollection = (id: string) =>
+  request<Collection>(`/collections/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
 
 export async function search(q: string): Promise<Product[]> {
   const { data } = await get<Product[]>(`/products?q=${encodeURIComponent(q)}`)
