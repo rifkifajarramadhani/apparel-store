@@ -13,9 +13,11 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-block px-2 py-0.5 text-xs font-bold uppercase tracking-wide',
-        variant === 'default' && 'bg-foreground text-background',
-        variant === 'sale' && 'bg-sale text-white',
+        'inline-block rounded-full px-3 py-1 text-xs font-semibold tracking-wide',
+        // badge-promo: white pill w/ hairline border
+        variant === 'default' && 'border border-hairline bg-background text-foreground',
+        // badge-sale-text: red text only, no container
+        variant === 'sale' && 'px-0 text-sale',
         variant === 'muted' && 'bg-secondary text-muted-foreground',
         className,
       )}

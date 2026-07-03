@@ -1,63 +1,93 @@
-@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap');
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
-/* Near-black on white, product imagery supplies the colour. Sale price in red. */
+/* Ink on canvas, product imagery supplies the colour. Sale price in red. Hex per DESIGN.md. */
 :root {
-  --sale: #d43f2a;
+  --sale: #d30005;
+  --sale-deep: #780700;
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.16 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.16 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.16 0 0);
-  --primary: oklch(0.16 0 0);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.16 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.53 0 0);
-  --accent: oklch(0.96 0 0);
-  --accent-foreground: oklch(0.16 0 0);
+  --background: #ffffff; /* canvas */
+  --foreground: #111111; /* ink */
+  --card: #ffffff;
+  --card-foreground: #111111;
+  --popover: #ffffff;
+  --popover-foreground: #111111;
+  --primary: #111111; /* ink */
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5; /* soft-cloud */
+  --secondary-foreground: #111111;
+  --muted: #f5f5f5; /* soft-cloud */
+  --muted-foreground: #707072; /* mute */
+  --accent: #f5f5f5;
+  --accent-foreground: #111111;
   --destructive: oklch(0.58 0.22 27.3);
-  --destructive-foreground: oklch(0.99 0 0);
-  --border: oklch(0.9 0 0);
-  --input: oklch(0.9 0 0);
-  --ring: oklch(0.16 0 0);
-  --radius: 0.25rem;
+  --destructive-foreground: #ffffff;
+  --border: #e5e5e5; /* hairline-soft */
+  --input: #e5e5e5;
+  --ring: #111111;
+  --radius: 0px;
+
+  /* Extended DESIGN.md palette */
+  --hairline: #cacacb;
+  --success: #007d48;
+  --success-bright: #1eaa52;
+  --info: #1151ff;
+  --info-deep: #0034e3;
+  --accent-pink: #ed1aa0;
+  --accent-pink-soft: #ffb0dd;
+  --accent-purple-soft: #beaffd;
+  --accent-purple-pale: #d6d1ff;
+  --accent-teal: #0a7281;
+  --accent-pink-deep: #4c012d;
 }
 
 .dark {
   --sale: #ff6a53;
-  --background: oklch(0.16 0 0);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.16 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.16 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.98 0 0);
-  --primary-foreground: oklch(0.16 0 0);
-  --secondary: oklch(0.26 0 0);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.26 0 0);
-  --muted-foreground: oklch(0.7 0 0);
-  --accent: oklch(0.26 0 0);
-  --accent-foreground: oklch(0.98 0 0);
+  --sale-deep: #d30005;
+  --background: #111111;
+  --foreground: #fafafa;
+  --card: #111111;
+  --card-foreground: #fafafa;
+  --popover: #111111;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #111111;
+  --secondary: #39393b; /* charcoal */
+  --secondary-foreground: #fafafa;
+  --muted: #39393b;
+  --muted-foreground: #9e9ea0; /* stone */
+  --accent: #39393b;
+  --accent-foreground: #fafafa;
   --destructive: oklch(0.7 0.19 22);
-  --destructive-foreground: oklch(0.16 0 0);
-  --border: oklch(0.28 0 0);
-  --input: oklch(0.28 0 0);
-  --ring: oklch(0.7 0 0);
+  --destructive-foreground: #111111;
+  --border: #39393b;
+  --input: #39393b;
+  --ring: #9e9ea0;
+
+  --hairline: #4b4b4d;
+  --success: #1eaa52;
 }
 
 @theme inline {
-  --font-sans: 'Archivo', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Archivo Narrow', 'Archivo', ui-sans-serif, sans-serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Bebas Neue', 'Inter', ui-sans-serif, sans-serif;
   --color-sale: var(--sale);
+  --color-sale-deep: var(--sale-deep);
+  --color-hairline: var(--hairline);
+  --color-success: var(--success);
+  --color-success-bright: var(--success-bright);
+  --color-info: var(--info);
+  --color-info-deep: var(--info-deep);
+  --color-accent-pink: var(--accent-pink);
+  --color-accent-pink-soft: var(--accent-pink-soft);
+  --color-accent-purple-soft: var(--accent-purple-soft);
+  --color-accent-purple-pale: var(--accent-purple-pale);
+  --color-accent-teal: var(--accent-teal);
+  --color-accent-pink-deep: var(--accent-pink-deep);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -77,9 +107,14 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 2px);
+  /* DESIGN.md pill scale. Default (--radius) is 0 so containers/cards/nav are square;
+     CTAs use rounded-full. ponytail: shadcn inputs/selects inherit rounded-md (24px) which
+     reads as the search-pill look — tweak a specific component locally if a menu row looks
+     over-rounded rather than remapping the token. */
+  --radius-sm: 18px;
+  --radius-md: 24px;
+  --radius-lg: 30px;
+  --radius-full: 9999px;
 }
 
 html,
@@ -94,12 +129,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Condensed, tight, uppercase section labels — the Nike signature. */
+/* Bebas Neue display tier — towering, tight, uppercase. The Nike signature. */
 .display {
   font-family: var(--font-display);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  line-height: 0.95;
+  font-weight: 400; /* Bebas Neue ships a single weight */
+  letter-spacing: 0;
+  line-height: 0.9;
+  text-transform: uppercase;
 }
 
 .eyebrow {

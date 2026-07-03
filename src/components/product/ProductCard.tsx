@@ -56,7 +56,12 @@ export function ProductCard({ product }: { product: Product }) {
             {product.swatches.slice(0, 5).map((s) => (
               <span
                 key={s.styleColor}
-                className="h-3 w-3 rounded-full border border-border"
+                className={cn(
+                  'h-3 w-3 rounded-full border border-border',
+                  // Nike concentric-ring selected state: ink ring + white interior gap
+                  s.styleColor === styleColor &&
+                    'border-2 border-background ring-2 ring-foreground',
+                )}
                 style={{ backgroundColor: s.hex }}
               />
             ))}
