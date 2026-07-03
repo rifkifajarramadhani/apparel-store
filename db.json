@@ -5858,5 +5858,67 @@
         "L"
       ]
     }
+  ],
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "email": "admin@axis.test",
+      "password": "$2b$10$VlJbp4yGK25U8NQf0wTcuOuNcPaNzsmoF3UkxOSAscd8EzX5agEra",
+      "role": "admin",
+      "emailVerified": true,
+      "pendingEmail": "",
+      "tokenVersion": 1
+    },
+    {
+      "id": 2,
+      "username": "jane",
+      "email": "jane@example.com",
+      "password": "$2b$10$EMREbRWIAKMEvWjqbghyYu7uGPN8c40b/x7/xEJfnqDubloMb15TS",
+      "role": "user",
+      "emailVerified": true,
+      "pendingEmail": "",
+      "tokenVersion": 1
+    },
+    {
+      "id": 3,
+      "username": "mike",
+      "email": "mike@example.com",
+      "password": "$2b$10$MVb21kqC6SS7xy6eOIaoXO1ZyjyR7RQ/jV6ajsnmX7eg9/tr3Gvza",
+      "role": "user",
+      "emailVerified": true,
+      "pendingEmail": "",
+      "tokenVersion": 1
+    },
+    {
+      "id": 4,
+      "username": "sara",
+      "email": "sara@example.com",
+      "password": "$2b$10$zkyrGVjKXQBSpbK1DN8wsuvItOxG15pJryUL52a9lkAoj86S.bfaG",
+      "role": "user",
+      "emailVerified": false,
+      "pendingEmail": "",
+      "tokenVersion": 1
+    },
+    {
+      "id": 5,
+      "username": "leo",
+      "email": "leo@example.com",
+      "password": "$2b$10$gPl/JaoeER2RqCAI2aP.mOxa8BwVe6W0AUx5KnmPozLbe6KfOf4.W",
+      "role": "user",
+      "emailVerified": true,
+      "pendingEmail": "leo.new@example.com",
+      "tokenVersion": 2
+    },
+    {
+      "id": 6,
+      "username": "nina",
+      "email": "nina@example.com",
+      "password": "$2b$10$6yoIZp/2p10t1p14Tb5fdevUi8XynxX8DMdfvuEaWUzXeOdj3YfPG",
+      "role": "user",
+      "emailVerified": false,
+      "pendingEmail": "",
+      "tokenVersion": 1
+    }
   ]
 }

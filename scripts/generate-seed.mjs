@@ -1,6 +1,7 @@
 // Single writer of db.json. Deterministic (seeded RNG), dependency-free.
 // Edit CATALOG to add products; ids/slugs/skus/price-ranges/card fields derive automatically.
 // Run: `npm run seed`  (also self-checks referential integrity on run).
+import bcrypt from 'bcryptjs'
 import { writeFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -202,6 +203,18 @@ CATALOG.forEach((entry, i) => {
 })
 
 const sizeScales = Object.entries(SIZE_SCALES).map(([id, s]) => ({ id, sizes: s }))
+
+// ── mock users — mirrors golang-clean-architecture user schema (camelCase) ──
+// Passwords are bcrypt-hashed below (json-server-auth /login does a bcrypt compare).
+const users = [
+  { id: 1, username: 'admin', email: 'admin@axis.test', password: 'password123', role: 'admin', emailVerified: true, pendingEmail: '', tokenVersion: 1 },
+  { id: 2, username: 'jane', email: 'jane@example.com', password: 'password123', role: 'user', emailVerified: true, pendingEmail: '', tokenVersion: 1 },
+  { id: 3, username: 'mike', email: 'mike@example.com', password: 'password123', role: 'user', emailVerified: true, pendingEmail: '', tokenVersion: 1 },
+  { id: 4, username: 'sara', email: 'sara@example.com', password: 'password123', role: 'user', emailVerified: false, pendingEmail: '', tokenVersion: 1 },
+  { id: 5, username: 'leo', email: 'leo@example.com', password: 'password123', role: 'user', emailVerified: true, pendingEmail: 'leo.new@example.com', tokenVersion: 2 },
+  { id: 6, username: 'nina', email: 'nina@example.com', password: 'password123', role: 'user', emailVerified: false, pendingEmail: '', tokenVersion: 1 },
+]
+
 const db = {
   products,
   colorways,
@@ -209,6 +222,7 @@ const db = {
   categories: CATEGORIES,
   collections: COLLECTIONS,
   sizeScales,
+  users: users.map((u) => ({ ...u, password: bcrypt.hashSync(u.password, 10) })),
 }
 
 // ── self-check: fail loudly if the generator drifts ─────────────────────────
@@ -232,11 +246,19 @@ function selfCheck() {
   for (const c of CATEGORIES)
     if (c.parentId && !CATEGORIES.some((x) => x.id === c.parentId))
       throw new Error(`category ${c.id} → missing parent ${c.parentId}`)
+  const uIds = new Set(), uEmails = new Set(), uNames = new Set()
+  for (const u of users) {
+    if (uIds.has(u.id)) throw new Error(`duplicate user id ${u.id}`)
+    if (uEmails.has(u.email)) throw new Error(`duplicate user email ${u.email}`)
+    if (uNames.has(u.username)) throw new Error(`duplicate username ${u.username}`)
+    if (u.role !== 'user' && u.role !== 'admin') throw new Error(`bad role on user ${u.id}: ${u.role}`)
+    uIds.add(u.id), uEmails.add(u.email), uNames.add(u.username)
+  }
 }
 selfCheck()
 
 const out = join(dirname(fileURLToPath(import.meta.url)), '..', 'db.json')
 writeFileSync(out, JSON.stringify(db, null, 2))
 console.log(
-  `db.json: ${products.length} products, ${colorways.length} colourways, ${skus.length} skus, ${CATEGORIES.length} categories, ${COLLECTIONS.length} collections`,
+  `db.json: ${products.length} products, ${colorways.length} colourways, ${skus.length} skus, ${CATEGORIES.length} categories, ${COLLECTIONS.length} collections, ${users.length} users`,
 )

@@ -1,5 +1,7 @@
 // The ONLY module that knows the API URL. Swap this to hit a real backend later
 // without touching the UI. Talks json-server @0.17.x query syntax.
+import { useAuth } from '#/stores/auth'
+import type { Session } from '#/types/auth'
 import type {
   Category,
   Colorway,
@@ -10,6 +12,12 @@ import type {
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'
 
+// Bearer header when signed in. getState() reads the store outside React.
+function authHeaders(): Record<string, string> {
+  const token = useAuth.getState().accessToken
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 const SORT_MAP: Record<string, [string, 'asc' | 'desc']> = {
   newest: ['publishedAt', 'desc'],
   'price-asc': ['minPrice', 'asc'],
@@ -17,11 +25,32 @@ const SORT_MAP: Record<string, [string, 'asc' | 'desc']> = {
 }
 
 async function get<T>(path: string): Promise<{ data: T; total: number }> {
-  const res = await fetch(`${BASE}${path}`)
+  const res = await fetch(`${BASE}${path}`, { headers: authHeaders() })
   if (!res.ok) throw new Error(`API ${res.status} on ${path}`)
   const total = Number(res.headers.get('X-Total-Count') ?? 0)
   return { data: (await res.json()) as T, total }
 }
+
+// Auth: json-server-auth returns { accessToken, user } on success, else 4xx with a message.
+async function authPost(path: string, body: unknown): Promise<Session> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(typeof data === 'string' ? data : 'Authentication failed')
+  return data as Session
+}
+
+export const login = (email: string, password: string) =>
+  authPost('/login', { email, password })
+
+export const register = (input: {
+  email: string
+  password: string
+  username?: string
+}) => authPost('/register', input)
 
 function toQuery(f: ProductFilters): string {
   const p = new URLSearchParams()

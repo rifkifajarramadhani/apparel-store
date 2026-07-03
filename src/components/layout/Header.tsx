@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { Heart, Menu, Search, ShoppingBag, X } from 'lucide-react'
+import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { categoriesQuery } from '#/lib/query'
 import { useCartCount } from '#/stores/cart'
+import { useCurrentUser } from '#/stores/auth'
 import { MegaMenu } from './MegaMenu'
 import { CartDrawer } from './CartDrawer'
 import type { Category } from '#/types/catalog'
@@ -18,6 +19,7 @@ export function Header() {
   const [q, setQ] = useState('')
   const navigate = useNavigate()
   const cartCount = useCartCount()
+  const user = useCurrentUser()
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -66,6 +68,12 @@ export function Header() {
         </form>
 
         <div className="ml-auto flex items-center gap-4 md:ml-4">
+          <Link
+            to={user ? '/account' : '/login'}
+            aria-label={user ? 'Account' : 'Sign in'}
+          >
+            <User className="h-5 w-5" />
+          </Link>
           <Link to="/favorites" aria-label="Favourites">
             <Heart className="h-5 w-5" />
           </Link>
