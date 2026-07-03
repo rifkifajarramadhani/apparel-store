@@ -1,0 +1,97 @@
+// Mirrors the shape written by scripts/generate-seed.mjs.
+
+export interface Swatch {
+  styleColor: string
+  hex: string
+}
+
+export interface Product {
+  id: string // style code, e.g. AX-1001
+  slug: string
+  name: string
+  subtitle: string
+  brand: string
+  gender: 'men' | 'women' | 'kids'
+  type: string
+  categoryId: string
+  categorySlug: string
+  collectionIds: string[]
+  sizeScale: string
+  basePrice: number
+  minPrice: number
+  maxPrice: number
+  badges: string[]
+  colorwayCount: number
+  colorFamilies: string[]
+  swatches: Swatch[]
+  thumbnailUrl: string
+  hoverImageUrl: string
+  defaultColorwayId: string
+  sizes: string[]
+  description: string
+  publishedAt: string
+}
+
+export interface Colorway {
+  id: string // styleColor, e.g. AX1001-010
+  productId: string
+  styleColor: string
+  name: string
+  colorFamily: string
+  swatchHex: string
+  price: number
+  isDefault: boolean
+  onSale: boolean
+  images: string[]
+  skus?: Sku[] // present when fetched with ?_embed=skus
+}
+
+export interface Sku {
+  id: string // styleColor-size
+  colorwayId: string
+  productId: string
+  size: string
+  sizeLabel: string
+  sizeScale: string
+  inStock: boolean
+  stockQty: number
+  price: number
+}
+
+export interface Category {
+  id: string
+  slug: string
+  name: string
+  parentId: string | null
+  gender: string
+  level: number
+}
+
+export interface Collection {
+  id: string
+  slug: string
+  name: string
+}
+
+export interface SizeScale {
+  id: string
+  sizes: string[]
+}
+
+// Coarse (server-side) product filters. Fine faceting is done client-side.
+export interface ProductFilters {
+  categoryId?: string
+  categorySlug?: string
+  gender?: string
+  minPrice?: number
+  maxPrice?: number
+  sort?: 'newest' | 'price-asc' | 'price-desc'
+  page?: number
+  limit?: number
+  q?: string
+}
+
+export interface Paged<T> {
+  items: T[]
+  total: number
+}
