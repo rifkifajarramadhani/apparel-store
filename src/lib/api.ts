@@ -20,6 +20,23 @@ import type {
   ProductAggregateInput,
   SkuInput,
 } from '#/services/schemas/admin'
+import {
+  BrandSchema,
+  CategoryRecordSchema,
+  ColourwaySchema,
+  ProductRecordSchema,
+  SizeRecordSchema,
+  SKUSchema,
+  cursorPageSchema,
+} from '#/services/schemas/catalog'
+import type {
+  Brand,
+  CategoryRecord,
+  Colourway,
+  ProductRecord,
+  SizeRecord,
+  SKU,
+} from '#/services/schemas/catalog'
 
 const BASE = import.meta.env.SSR
   ? (process.env.SERVER_API_URL ?? 'http://localhost:8080/api')
@@ -168,63 +185,120 @@ export async function register(input: {
 
 // ── catalog reads ─────────────────────────────────────────────────────────────
 
-const SORT_MAP: Record<string, [string, 'asc' | 'desc']> = {
-  newest: ['publishedAt', 'desc'],
-  'price-asc': ['minPrice', 'asc'],
-  'price-desc': ['minPrice', 'desc'],
-}
-
 function toQuery(f: ProductFilters): string {
   const p = new URLSearchParams()
-  if (f.categoryId) p.set('categoryId', f.categoryId)
-  if (f.categorySlug) p.set('categorySlug', f.categorySlug)
-  if (f.gender) p.set('gender', f.gender)
-  if (f.minPrice != null) p.set('minPrice_gte', String(f.minPrice))
-  if (f.maxPrice != null) p.set('maxPrice_lte', String(f.maxPrice))
+  if (f.categorySlug) p.set('category', f.categorySlug)
   if (f.q) p.set('q', f.q)
-  if (f.sort) {
-    const [by, order] = SORT_MAP[f.sort]
-    p.set('_sort', by)
-    p.set('_order', order)
-  }
-  if (f.page) p.set('_page', String(f.page))
-  if (f.limit) p.set('_limit', String(f.limit))
+  if (f.limit) p.set('limit', String(f.limit))
   const s = p.toString()
   return s ? `?${s}` : ''
+}
+
+function toProduct(record: ProductRecord): Product {
+  const primary = record.categories.at(0)
+  const images = record.assets.filter((asset) => asset.mediaType === 'image')
+  const minPrice = record.minPrice?.amount ?? 0
+  const maxPrice = record.maxPrice?.amount ?? minPrice
+  return {
+    id: record.id,
+    slug: record.slug,
+    name: record.name,
+    subtitle: record.subtitle,
+    brand: record.brand.name,
+    gender:
+      record.gender === 'women' || record.gender === 'kids'
+        ? record.gender
+        : 'men',
+    type: record.productType ?? '',
+    categoryId: primary?.id ?? '',
+    categorySlug: primary?.slug ?? '',
+    collectionIds: [],
+    sizeScale: record.sizes.at(0)?.scaleCode ?? '',
+    basePrice: minPrice,
+    minPrice,
+    maxPrice,
+    badges: [],
+    colorwayCount: record.colourways.length,
+    colorFamilies: [
+      ...new Set(
+        record.colourways.flatMap((item) =>
+          item.colourFamily ? [item.colourFamily] : [],
+        ),
+      ),
+    ],
+    swatches: record.colourways.map((item) => ({
+      styleColor: item.id,
+      hex: item.hexCode,
+    })),
+    thumbnailUrl: images.at(0)?.url ?? '',
+    hoverImageUrl: images.at(1)?.url ?? images.at(0)?.url ?? '',
+    defaultColorwayId: record.colourways.at(0)?.id ?? '',
+    sizes: record.sizes.map((size) => size.code),
+    description: record.description ?? '',
+    publishedAt: '',
+  }
 }
 
 export async function getProducts(
   f: ProductFilters = {},
 ): Promise<Paged<Product>> {
-  const { data, total } = await get<Product[]>(`/products${toQuery(f)}`)
-  return { items: data, total: f.limit ? total : data.length }
+  const { data } = await get<unknown>(`/products${toQuery(f)}`)
+  const page = cursorPageSchema(ProductRecordSchema).parse(data)
+  const items = page.items.map(toProduct)
+  return { items, total: items.length }
 }
 
 export async function getProduct(id: string): Promise<Product> {
-  const { data } = await get<Product>(`/products/${id}`)
-  return data
+  return toProduct(await getProductRecord(id))
 }
 
 // Resolve a product by its slug (routes carry the slug, not the style code).
 export async function getProductBySlug(
   slug: string,
 ): Promise<Product | undefined> {
-  const { data } = await get<Product[]>(
-    `/products?slug=${encodeURIComponent(slug)}`,
-  )
-  return data[0]
+  try {
+    return toProduct(await getProductRecord(slug))
+  } catch {
+    return undefined
+  }
 }
 
 export async function getColorways(productId: string): Promise<Colorway[]> {
-  const { data } = await get<Colorway[]>(
-    `/colorways?productId=${productId}&_embed=skus`,
-  )
-  return data
+  const [product, skuPage] = await Promise.all([
+    getProductRecord(productId),
+    getCatalogSKUs({ productId, limit: 100 }),
+  ])
+  return product.colourways.map((colourway, index) => ({
+    id: colourway.id,
+    productId,
+    styleColor: colourway.id,
+    name: colourway.name,
+    colorFamily: colourway.colourFamily ?? '',
+    swatchHex: colourway.hexCode,
+    price:
+      skuPage.items.find((sku) => sku.colourway.id === colourway.id)?.price
+        .amount ??
+      product.minPrice?.amount ??
+      0,
+    isDefault: index === 0,
+    onSale: false,
+    images: product.assets
+      .filter((asset) => asset.mediaType === 'image')
+      .map((asset) => asset.url),
+    skus: skuPage.items
+      .filter((sku) => sku.colourway.id === colourway.id)
+      .map(toSKU),
+  }))
 }
 
 export async function getCategoryTree(): Promise<Category[]> {
-  const { data } = await get<Category[]>('/categories')
-  return data
+  const records = await getCatalogCategories()
+  return records.map((item) => ({
+    ...item,
+    parentId: item.parentId ?? null,
+    gender: '',
+    level: item.parentId ? 1 : 0,
+  }))
 }
 
 export async function getCollections(): Promise<Collection[]> {
@@ -233,25 +307,110 @@ export async function getCollections(): Promise<Collection[]> {
 }
 
 export async function getSizeScales(): Promise<SizeScale[]> {
-  const { data } = await get<SizeScale[]>('/sizeScales')
-  return data
+  const sizes = await getSizes()
+  const grouped = new Map<string, string[]>()
+  for (const size of sizes)
+    grouped.set(size.scaleCode, [
+      ...(grouped.get(size.scaleCode) ?? []),
+      size.code,
+    ])
+  return [...grouped].map(([id, values]) => ({ id, sizes: values }))
 }
 
 export async function getSkus(
   filters: { productId?: string; colorwayId?: string } = {},
 ): Promise<Sku[]> {
-  const params = new URLSearchParams()
-  if (filters.productId) params.set('productId', filters.productId)
-  if (filters.colorwayId) params.set('colorwayId', filters.colorwayId)
-  const suffix = params.size ? `?${params}` : ''
-  const { data } = await get<Sku[]>(`/skus${suffix}`)
-  return data
+  const page = await getCatalogSKUs({
+    productId: filters.productId,
+    colourwayId: filters.colorwayId,
+    limit: 100,
+  })
+  return page.items.map(toSKU)
+}
+
+function toSKU(sku: SKU): Sku {
+  return {
+    id: sku.id,
+    colorwayId: sku.colourway.id,
+    productId: sku.productId,
+    size: sku.size.code,
+    sizeLabel: sku.size.name,
+    sizeScale: sku.size.scaleCode,
+    inStock: sku.available > 0,
+    stockQty: sku.onHand,
+    price: sku.price.amount,
+  }
 }
 
 export async function search(q: string): Promise<Product[]> {
-  const { data } = await get<Product[]>(`/products?q=${encodeURIComponent(q)}`)
-  return data
+  return (await getProducts({ q })).items
 }
+
+// ── normalized catalog ───────────────────────────────────────────────────
+
+interface CatalogFilters {
+  category?: string
+  brand?: string
+  q?: string
+  currency?: string
+  cursor?: string
+  limit?: number
+}
+
+function catalogQuery(filters: CatalogFilters): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(filters)) {
+    if (value !== undefined && value !== '') params.set(key, String(value))
+  }
+  return params.size ? `?${params}` : ''
+}
+
+export async function getCatalogProducts(filters: CatalogFilters = {}) {
+  const { data } = await get<unknown>(`/products${catalogQuery(filters)}`)
+  return cursorPageSchema(ProductRecordSchema).parse(data)
+}
+
+export async function getProductRecord(
+  id: string,
+  currency = 'IDR',
+): Promise<ProductRecord> {
+  const { data } = await get<unknown>(
+    `/products/${encodeURIComponent(id)}?currency=${currency}`,
+  )
+  return ProductRecordSchema.parse(data)
+}
+
+export async function getCatalogSKUs(
+  filters: CatalogFilters & { productId?: string; colourwayId?: string } = {},
+) {
+  const { data } = await get<unknown>(`/skus${catalogQuery(filters)}`)
+  return cursorPageSchema(SKUSchema).parse(data)
+}
+
+async function getCatalogLookup<T>(
+  path: string,
+  schema: { parse: (value: unknown) => T },
+) {
+  const { data } = await get<unknown>(path)
+  return schema.parse(data)
+}
+
+export const getBrands = (): Promise<Brand[]> =>
+  getCatalogLookup('/brands', BrandSchema.array())
+export const getCatalogCategories = (): Promise<CategoryRecord[]> =>
+  getCatalogLookup('/categories', CategoryRecordSchema.array())
+export const getColourways = (): Promise<Colourway[]> =>
+  getCatalogLookup('/colourways', ColourwaySchema.array())
+export const getSizes = (): Promise<SizeRecord[]> =>
+  getCatalogLookup('/sizes', SizeRecordSchema.array())
+
+export const setInventory = (input: {
+  skuId: string
+  locationId: string
+  onHand: number
+  reserved: number
+}): Promise<SKU | null> =>
+  request('/inventory', { method: 'PUT', body: JSON.stringify(input) })
 
 // ── admin catalog writes ──────────────────────────────────────────────────────
 
