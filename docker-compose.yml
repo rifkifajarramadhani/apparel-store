@@ -1,0 +1,25 @@
+services:
+  web-dev:
+    profiles: [dev]
+    build:
+      context: .
+      target: dev
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8080/api}
+    volumes:
+      - .:/app
+      - /app/node_modules # keep container-installed deps over the bind mount
+
+  web-prod:
+    profiles: [prod]
+    build:
+      context: .
+      target: prod
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080/api}
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
