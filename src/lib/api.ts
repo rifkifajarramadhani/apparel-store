@@ -202,7 +202,7 @@ function colourwayBusinessId(slug: string) {
 
 function toProduct(record: ProductRecord): Product {
   const primary = record.categories.at(0)
-  const images = record.assets.filter((asset) => asset.mediaType === 'image')
+  const images = productImages(record)
   const minPrice = record.minPrice?.amount ?? 0
   const maxPrice = record.maxPrice?.amount ?? minPrice
   const defaultColourway = record.colourways.at(0)
@@ -238,8 +238,8 @@ function toProduct(record: ProductRecord): Product {
       styleColor: colourwayBusinessId(item.slug),
       hex: item.hexCode,
     })),
-    thumbnailUrl: images.at(0)?.url ?? '',
-    hoverImageUrl: images.at(1)?.url ?? images.at(0)?.url ?? '',
+    thumbnailUrl: images.at(0) ?? NO_IMAGE,
+    hoverImageUrl: images.at(1) ?? images.at(0) ?? NO_IMAGE,
     defaultColorwayId: defaultColourway
       ? colourwayBusinessId(defaultColourway.slug)
       : '',
@@ -358,12 +358,19 @@ function toSKU(sku: SKU): Sku {
   }
 }
 
+// ponytail: substring match on the seed host; tighten to an exact URL list if
+// a real asset ever lives there (it won't — real images go to the CDN).
+export const isPlaceholderImage = (url: string) => url.includes('placehold.co')
+
+const NO_IMAGE = 'https://placehold.co/800x800/png?text=No+Image'
+
 // Images are stored product-level; all colourways share them.
 // Backend already orders record.assets by role, sortOrder.
 function productImages(record: ProductRecord): string[] {
   return record.assets
     .filter((asset) => asset.mediaType === 'image')
     .map((asset) => asset.url)
+    .filter((url) => !isPlaceholderImage(url))
 }
 
 export async function search(q: string): Promise<Product[]> {
@@ -466,9 +473,7 @@ async function buildProductAggregate(
       isDefault: index === 0,
       onSale: false,
       images:
-        images.length > 0
-          ? images
-          : ['https://placehold.co/800x800/png?text=No+Image'],
+        images.length > 0 ? images : [NO_IMAGE],
     }
   })
 

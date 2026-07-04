@@ -55,6 +55,7 @@ import {
 import {
   createProductAggregate,
   deleteProduct,
+  isPlaceholderImage,
   updateProductAggregate,
   uploadProductImages,
 } from '#/lib/api'
@@ -619,8 +620,8 @@ function ProductEditor({
               {selected.name} images
             </h2>
             <p className="mb-5 text-sm text-muted-foreground">
-              The first image is used as the storefront cover. Upload up to
-              eight images.
+              The first image is the storefront cover — reorder to change it.
+              Upload up to eight images.
             </p>
             {(() => {
               const remaining = MAX_COLORWAY_IMAGES - selected.images.length
@@ -660,9 +661,14 @@ function ProductEditor({
                     additions.map((image) => [image.clientId, image]),
                   ),
                 }))
+                // Drop the seed placeholder so the first real upload becomes
+                // the cover instead of landing behind it.
+                const base = selected.images.filter(
+                  (image) => !isPlaceholderImage(image),
+                )
                 updateColorway({
                   images: [
-                    ...selected.images,
+                    ...base,
                     ...additions.map(({ clientId }) =>
                       pendingImageReference(clientId),
                     ),
@@ -728,7 +734,10 @@ function ProductEditor({
                   return (
                     <div
                       key={`${image}-${index}`}
-                      className="group overflow-hidden rounded-lg border bg-muted ring-offset-background transition-shadow hover:ring-2 hover:ring-ring hover:ring-offset-2"
+                      className={cn(
+                        'group overflow-hidden rounded-lg border bg-muted ring-offset-background transition-shadow hover:ring-2 hover:ring-ring hover:ring-offset-2',
+                        index === 0 && 'ring-2 ring-ring ring-offset-2',
+                      )}
                     >
                       <img
                         src={source}
@@ -736,7 +745,7 @@ function ProductEditor({
                         className="aspect-square w-full object-cover"
                       />
                       <div className="flex items-center justify-between border-t p-1">
-                        <Badge variant="muted">
+                        <Badge variant={index === 0 ? 'default' : 'muted'}>
                           {index === 0
                             ? 'Cover'
                             : pending
