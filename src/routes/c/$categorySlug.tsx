@@ -3,7 +3,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { z } from 'zod'
 import { categoriesQuery, productsQuery } from '#/lib/query'
-import { ProductGrid } from '#/components/product/ProductGrid'
+import { ProductGrid } from '#/components/product/ProductGrid/ProductGrid'
 import { cn } from '#/lib/utils'
 import type { Product, ProductFilters } from '#/types/catalog'
 

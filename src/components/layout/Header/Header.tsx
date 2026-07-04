@@ -5,8 +5,8 @@ import { Heart, Menu, Search, ShoppingBag, User, X } from 'lucide-react'
 import { categoriesQuery } from '#/lib/query'
 import { useCartCount } from '#/stores/cart'
 import { useCurrentUser } from '#/stores/auth'
-import { MegaMenu } from './MegaMenu'
-import { CartDrawer } from './CartDrawer'
+import { MegaMenu } from '../MegaMenu/MegaMenu'
+import { CartDrawer } from '../CartDrawer/CartDrawer'
 import type { Category } from '#/types/catalog'
 
 export function Header() {

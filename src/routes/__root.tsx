@@ -10,8 +10,8 @@ import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
 import TanStackQueryDevtools from '../integrations/tanstack-query/devtools'
-import { Header } from '#/components/layout/Header'
-import { Footer } from '#/components/layout/Footer'
+import { Header } from '#/components/layout/Header/Header'
+import { Footer } from '#/components/layout/Footer/Footer'
 import { Toaster } from '#/components/ui/sonner'
 import { categoriesQuery } from '#/lib/query'
 

@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { productsQuery } from '#/lib/query'
-import { ProductGrid } from '#/components/product/ProductGrid'
+import { ProductGrid } from '#/components/product/ProductGrid/ProductGrid'
 
 export const Route = createFileRoute('/sale')({
   loader: ({ context }) => context.queryClient.ensureQueryData(productsQuery()),

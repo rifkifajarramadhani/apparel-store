@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { productsQuery } from '#/lib/query'
-import { ProductGrid } from '#/components/product/ProductGrid'
+import { ProductGrid } from '#/components/product/ProductGrid/ProductGrid'
 import { useFavorites } from '#/stores/favorites'
-import { useHydrated } from '#/stores/useHydrated'
+import { useHydrated } from '#/hooks/use-hydrated'
 
 export const Route = createFileRoute('/favorites')({
   loader: ({ context }) => context.queryClient.ensureQueryData(productsQuery()),

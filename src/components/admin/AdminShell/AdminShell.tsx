@@ -18,7 +18,7 @@ import {
   Tags,
 } from 'lucide-react'
 import { useAuth } from '#/stores/auth'
-import { useHydrated } from '#/stores/useHydrated'
+import { useHydrated } from '#/hooks/use-hydrated'
 import { useAdminTheme } from '#/stores/admin-theme'
 import { Button } from '#/components/ui/button'
 import {

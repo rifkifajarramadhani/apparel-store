@@ -1,10 +1,9 @@
-import { useCallback } from 'react'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { z } from 'zod'
 import { productsQuery } from '#/lib/query'
-import { ProductCard } from '#/components/product/ProductCard'
-import { VerificationToast } from '#/components/VerificationToast/VerificationToast'
+import { ProductCard } from '#/components/product/ProductCard/ProductCard'
+import { useVerificationToast } from '#/hooks/use-verification-toast'
 
 export const Route = createFileRoute('/')({
   validateSearch: z.object({
@@ -22,22 +21,15 @@ const TILES = [
 
 function Home() {
   const { verification } = Route.useSearch()
-  const navigate = useNavigate()
   const products = useSuspenseQuery(productsQuery()).data.items
   const justIn = [...products]
     .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt))
     .slice(0, 4)
 
-  const clearVerification = useCallback(() => {
-    void navigate({ to: '/', search: {}, replace: true })
-  }, [navigate])
+  useVerificationToast(verification)
 
   return (
     <div>
-      <VerificationToast
-        status={verification}
-        onConsumed={clearVerification}
-      />
       {/* Hero — the most characteristic thing: a bold statement + entry point. */}
       <section className="border-b border-border bg-foreground text-background">
         <div className="mx-auto flex min-h-[70vh] max-w-[1400px] flex-col justify-end px-4 py-16 md:px-8">

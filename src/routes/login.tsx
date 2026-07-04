@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useState } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
@@ -8,7 +8,7 @@ import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { safeAdminRedirect } from '#/lib/admin-auth'
-import { VerificationToast } from '#/components/VerificationToast/VerificationToast'
+import { useVerificationToast } from '#/hooks/use-verification-toast'
 
 export const Route = createFileRoute('/login')({
   validateSearch: z.object({
@@ -28,13 +28,7 @@ function LoginPage() {
   const navigate = useNavigate()
   const { redirect, verification } = Route.useSearch()
 
-  const clearVerification = useCallback(() => {
-    void navigate({
-      to: '/login',
-      search: redirect ? { redirect } : {},
-      replace: true,
-    })
-  }, [navigate, redirect])
+  useVerificationToast(verification)
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -62,10 +56,6 @@ function LoginPage() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
-      <VerificationToast
-        status={verification}
-        onConsumed={clearVerification}
-      />
       <h1 className="display mb-6 text-3xl">
         {mode === 'login' ? 'Sign in' : 'Create account'}
       </h1>

@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '#/stores/auth'
-import { useHydrated } from '#/stores/useHydrated'
+import { useHydrated } from '#/hooks/use-hydrated'
 import { Button } from '#/components/ui/button'
 import { Price } from '#/components/ui/price'
 import { ordersQuery } from '#/lib/query'

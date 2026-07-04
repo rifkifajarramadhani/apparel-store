@@ -7,10 +7,10 @@ import {
   productBySlugQuery,
   productsQuery,
 } from '#/lib/query'
-import { Gallery } from '#/components/product/Gallery'
-import { SwatchList } from '#/components/product/SwatchList'
-import { SizeGrid } from '#/components/product/SizeGrid'
-import { ProductGrid } from '#/components/product/ProductGrid'
+import { Gallery } from '#/components/product/Gallery/Gallery'
+import { SwatchList } from '#/components/product/SwatchList/SwatchList'
+import { SizeGrid } from '#/components/product/SizeGrid/SizeGrid'
+import { ProductGrid } from '#/components/product/ProductGrid/ProductGrid'
 import { Price } from '#/components/ui/price'
 import { cn } from '#/lib/utils'
 import { useCart } from '#/stores/cart'
