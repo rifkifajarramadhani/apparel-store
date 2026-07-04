@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from '@tanstack/react-router'
 import {
   useMutation,
@@ -11,6 +11,7 @@ import {
   ArrowUp,
   CheckCircle2,
   ExternalLink,
+  ImageUp,
   Plus,
   Save,
   Trash2,
@@ -55,6 +56,7 @@ import {
   createProductAggregate,
   deleteProduct,
   updateProductAggregate,
+  uploadProductImages,
 } from '#/lib/api'
 import {
   categoriesQuery,
@@ -63,10 +65,31 @@ import {
   queryKeys,
   sizeScalesQuery,
 } from '#/lib/query'
+import { cn } from '#/lib/utils'
 import { ProductAggregateInputSchema } from '#/services/schemas/admin'
 import type { ProductAggregateInput } from '#/services/schemas/admin'
 
 type EditorTab = 'details' | 'media' | 'inventory'
+
+interface PendingImage {
+  clientId: string
+  file: File
+  previewUrl: string
+}
+
+const PENDING_IMAGE_PREFIX = 'pending:'
+const MAX_IMAGE_SIZE = 8 * 1024 * 1024
+const MAX_COLORWAY_IMAGES = 8
+
+function pendingImageReference(clientId: string) {
+  return `${PENDING_IMAGE_PREFIX}${clientId}`
+}
+
+function pendingImageId(reference: string) {
+  return reference.startsWith(PENDING_IMAGE_PREFIX)
+    ? reference.slice(PENDING_IMAGE_PREFIX.length)
+    : null
+}
 
 function slugify(value: string) {
   return value
@@ -154,7 +177,14 @@ function ProductEditor({
 }) {
   const [draft, setDraft] = useState(initial)
   const [saved, setSaved] = useState(true)
-  const [imageUrl, setImageUrl] = useState('')
+  const [pendingImages, setPendingImages] = useState<
+    Record<string, PendingImage>
+  >({})
+  const pendingImagesRef = useRef(pendingImages)
+  const [savePhase, setSavePhase] = useState<'idle' | 'uploading' | 'saving'>(
+    'idle',
+  )
+  const [dragging, setDragging] = useState(false)
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const categories = useSuspenseQuery(categoriesQuery()).data
@@ -171,6 +201,19 @@ function ProductEditor({
   )
   const selectedSkus = draft.skus.filter(
     (sku) => sku.colorwayId === selected.id,
+  )
+
+  useEffect(() => {
+    pendingImagesRef.current = pendingImages
+  }, [pendingImages])
+
+  useEffect(
+    () => () => {
+      for (const image of Object.values(pendingImagesRef.current)) {
+        URL.revokeObjectURL(image.previewUrl)
+      }
+    },
+    [],
   )
 
   const commit = (next: ProductAggregateInput) => {
@@ -190,7 +233,51 @@ function ProductEditor({
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const parsed = ProductAggregateInputSchema.parse(draft)
+      const pending = Object.values(pendingImages)
+      let nextDraft = draft
+
+      // Validate all non-upload fields and image counts before doing network IO.
+      ProductAggregateInputSchema.parse({
+        ...draft,
+        colorways: draft.colorways.map((colorway) => ({
+          ...colorway,
+          images: colorway.images.map((image) =>
+            pendingImageId(image) ? 'https://pending.invalid/image' : image,
+          ),
+        })),
+      })
+
+      if (pending.length > 0) {
+        setSavePhase('uploading')
+        const uploaded = await uploadProductImages(
+          pending.map(({ clientId, file }) => ({ clientId, file })),
+        )
+        const urls = new Map(
+          uploaded.map(({ clientId, url }) => [clientId, url]),
+        )
+        if (urls.size !== pending.length) {
+          throw new Error('The image upload response was incomplete')
+        }
+        nextDraft = {
+          ...draft,
+          colorways: draft.colorways.map((colorway) => ({
+            ...colorway,
+            images: colorway.images.map((image) => {
+              const clientId = pendingImageId(image)
+              if (!clientId) return image
+              const url = urls.get(clientId)
+              if (!url) throw new Error(`Missing uploaded image ${clientId}`)
+              return url
+            }),
+          })),
+        }
+        setDraft(nextDraft)
+        setPendingImages({})
+        for (const image of pending) URL.revokeObjectURL(image.previewUrl)
+      }
+
+      setSavePhase('saving')
+      const parsed = ProductAggregateInputSchema.parse(nextDraft)
       return isNew
         ? createProductAggregate(parsed)
         : updateProductAggregate(parsed)
@@ -212,7 +299,10 @@ function ProductEditor({
         })
     },
     onError: (error) => toast.error(error.message),
+    onSettled: () => setSavePhase('idle'),
   })
+
+  const busy = saveMutation.isPending
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteProduct(draft.product.id),
@@ -300,8 +390,7 @@ function ProductEditor({
                   to="/t/$slug/$styleColor"
                   params={{
                     slug: draft.product.slug,
-                    styleColor:
-                      selected.styleColor,
+                    styleColor: selected.styleColor,
                   }}
                 >
                   <ExternalLink data-icon="inline-start" /> View storefront
@@ -315,6 +404,7 @@ function ProductEditor({
                     variant="destructive"
                     size="icon"
                     aria-label="Delete product"
+                    disabled={busy}
                   >
                     <Trash2 />
                   </Button>
@@ -337,16 +427,25 @@ function ProductEditor({
               </AlertDialog>
             ) : null}
             <Button
-              disabled={saveMutation.isPending || saved}
+              disabled={busy || saved}
               onClick={() => saveMutation.mutate()}
             >
               <Save data-icon="inline-start" />{' '}
-              {saveMutation.isPending ? 'Saving…' : 'Save changes'}
+              {savePhase === 'uploading'
+                ? 'Uploading images…'
+                : savePhase === 'saving'
+                  ? 'Saving…'
+                  : 'Save changes'}
             </Button>
           </>
         }
       />
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs
+        value={tab}
+        onValueChange={setTab}
+        aria-busy={busy}
+        className={cn(busy && 'pointer-events-none opacity-70')}
+      >
         <div className="border-b px-4 md:px-7">
           <TabsList className="h-12 bg-transparent p-0">
             <TabsTrigger value="details">Details</TabsTrigger>
@@ -520,97 +619,190 @@ function ProductEditor({
               {selected.name} images
             </h2>
             <p className="mb-5 text-sm text-muted-foreground">
-              The first image is used as the storefront cover. Add up to eight
-              public image URLs.
+              The first image is used as the storefront cover. Upload up to
+              eight images.
             </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              {selected.images.map((image, index) => (
-                <div
-                  key={`${image}-${index}`}
-                  className="group border bg-muted"
-                >
-                  <img
-                    src={image}
-                    alt={`Product view ${index + 1}`}
-                    className="aspect-square w-full object-cover"
-                  />
-                  <div className="flex items-center justify-between border-t p-1">
-                    <Badge variant="muted">
-                      {index === 0 ? 'Cover' : index + 1}
-                    </Badge>
-                    <div className="flex">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={index === 0}
-                        onClick={() => {
-                          const images = [...selected.images]
-                          ;[images[index - 1], images[index]] = [
-                            images[index],
-                            images[index - 1],
-                          ]
-                          updateColorway({ images })
-                        }}
-                      >
-                        <ArrowUp />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={index === selected.images.length - 1}
-                        onClick={() => {
-                          const images = [...selected.images]
-                          ;[images[index], images[index + 1]] = [
-                            images[index + 1],
-                            images[index],
-                          ]
-                          updateColorway({ images })
-                        }}
-                      >
-                        <ArrowDown />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={selected.images.length === 1}
-                        onClick={() =>
-                          updateColorway({
-                            images: selected.images.filter(
-                              (_, itemIndex) => itemIndex !== index,
-                            ),
-                          })
-                        }
-                      >
-                        <Trash2 />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 flex max-w-2xl gap-2">
-              <Input
-                type="url"
-                value={imageUrl}
-                onChange={(event) => setImageUrl(event.target.value)}
-                placeholder="https://…"
-              />
-              <Button
-                variant="outline"
-                disabled={!imageUrl || selected.images.length >= 8}
-                onClick={() => {
-                  try {
-                    new URL(imageUrl)
-                    updateColorway({ images: [...selected.images, imageUrl] })
-                    setImageUrl('')
-                  } catch {
-                    toast.error('Enter a valid image URL')
+            {(() => {
+              const remaining = MAX_COLORWAY_IMAGES - selected.images.length
+              const atCap = remaining <= 0
+
+              const handleFiles = (fileList: FileList | null) => {
+                if (!fileList || atCap || busy) return
+                const files: File[] = []
+                for (const file of Array.from(fileList)) {
+                  if (!file.type.startsWith('image/')) {
+                    toast.error(`${file.name} is not an image`)
+                    continue
                   }
-                }}
-              >
-                <Plus data-icon="inline-start" /> Add image
-              </Button>
-            </div>
+                  if (file.size > MAX_IMAGE_SIZE) {
+                    toast.error(`${file.name} is larger than 8 MB`)
+                    continue
+                  }
+                  files.push(file)
+                }
+                const accepted = files.slice(0, remaining)
+                if (files.length > accepted.length) {
+                  toast.error('Only 8 images allowed per colorway')
+                }
+                if (accepted.length === 0) return
+
+                const additions = accepted.map((file) => {
+                  const clientId = crypto.randomUUID()
+                  return {
+                    clientId,
+                    file,
+                    previewUrl: URL.createObjectURL(file),
+                  }
+                })
+                setPendingImages((current) => ({
+                  ...current,
+                  ...Object.fromEntries(
+                    additions.map((image) => [image.clientId, image]),
+                  ),
+                }))
+                updateColorway({
+                  images: [
+                    ...selected.images,
+                    ...additions.map(({ clientId }) =>
+                      pendingImageReference(clientId),
+                    ),
+                  ],
+                })
+              }
+
+              return (
+                <label
+                  aria-disabled={atCap || busy}
+                  onDragOver={(event) => {
+                    event.preventDefault()
+                    if (!atCap && !busy) setDragging(true)
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(event) => {
+                    event.preventDefault()
+                    setDragging(false)
+                    handleFiles(event.dataTransfer.files)
+                  }}
+                  className={cn(
+                    'flex cursor-pointer flex-col items-center gap-4 rounded-lg border-2 border-dashed bg-muted/40 p-6 text-center transition-colors',
+                    dragging && 'border-ring bg-muted',
+                    (atCap || busy) && 'cursor-not-allowed opacity-60',
+                  )}
+                >
+                  <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <ImageUp className="size-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">
+                      Drag & drop or click to select
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PNG, JPG up to 8 MB · uploads when you save · {remaining}{' '}
+                      of 8 remaining
+                    </p>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="sr-only"
+                    disabled={atCap || busy}
+                    onChange={(event) => {
+                      handleFiles(event.target.files)
+                      event.target.value = ''
+                    }}
+                  />
+                </label>
+              )
+            })()}
+            {selected.images.length === 0 ? (
+              <p className="mt-5 text-sm text-muted-foreground">
+                No images yet. Add at least one to publish this colorway.
+              </p>
+            ) : (
+              <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                {selected.images.map((image, index) => {
+                  const clientId = pendingImageId(image)
+                  const pending = clientId ? pendingImages[clientId] : undefined
+                  const source = pending?.previewUrl ?? image
+                  return (
+                    <div
+                      key={`${image}-${index}`}
+                      className="group overflow-hidden rounded-lg border bg-muted ring-offset-background transition-shadow hover:ring-2 hover:ring-ring hover:ring-offset-2"
+                    >
+                      <img
+                        src={source}
+                        alt={`Product view ${index + 1}`}
+                        className="aspect-square w-full object-cover"
+                      />
+                      <div className="flex items-center justify-between border-t p-1">
+                        <Badge variant="muted">
+                          {index === 0
+                            ? 'Cover'
+                            : pending
+                              ? 'Pending'
+                              : index + 1}
+                        </Badge>
+                        <div className="flex opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={index === 0}
+                            onClick={() => {
+                              const images = [...selected.images]
+                              ;[images[index - 1], images[index]] = [
+                                images[index],
+                                images[index - 1],
+                              ]
+                              updateColorway({ images })
+                            }}
+                          >
+                            <ArrowUp />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={index === selected.images.length - 1}
+                            onClick={() => {
+                              const images = [...selected.images]
+                              ;[images[index], images[index + 1]] = [
+                                images[index + 1],
+                                images[index],
+                              ]
+                              updateColorway({ images })
+                            }}
+                          >
+                            <ArrowDown />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={selected.images.length === 1}
+                            onClick={() => {
+                              if (pending) {
+                                URL.revokeObjectURL(pending.previewUrl)
+                                setPendingImages((current) => {
+                                  const next = { ...current }
+                                  delete next[pending.clientId]
+                                  return next
+                                })
+                              }
+                              updateColorway({
+                                images: selected.images.filter(
+                                  (_, itemIndex) => itemIndex !== index,
+                                ),
+                              })
+                            }}
+                          >
+                            <Trash2 />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </TabsContent>
         <TabsContent value="inventory" className="m-0">

@@ -118,7 +118,9 @@ async function authedFetch(
       ...init,
       headers: {
         ...authHeader(token),
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(init.body && !(init.body instanceof FormData)
+          ? { 'Content-Type': 'application/json' }
+          : {}),
         ...init.headers,
       },
     })
@@ -276,11 +278,12 @@ export async function getColorways(productId: string): Promise<Colorway[]> {
     getProductRecord(productId),
     getCatalogSKUs({ productId, limit: 100 }),
   ])
-  const images = product.assets
-    .filter((asset) => asset.mediaType === 'image')
-    .map((asset) => asset.url)
+  const images = productImages(product)
   return product.colourways.map((colourway, index) => {
     const styleColor = colourwayBusinessId(colourway.slug)
+    const colourwaySkus = skuPage.items.filter(
+      (sku) => sku.colourway.id === colourway.id,
+    )
     return {
       id: styleColor,
       productId: product.styleCode,
@@ -296,9 +299,7 @@ export async function getColorways(productId: string): Promise<Colorway[]> {
       isDefault: index === 0,
       onSale: false,
       images,
-      skus: skuPage.items
-        .filter((sku) => sku.colourway.id === colourway.id)
-        .map(toSKU),
+      skus: colourwaySkus.map(toSKU),
     }
   })
 }
@@ -355,6 +356,14 @@ function toSKU(sku: SKU): Sku {
     stockQty: sku.onHand,
     price: sku.price.amount,
   }
+}
+
+// Images are stored product-level; all colourways share them.
+// Backend already orders record.assets by role, sortOrder.
+function productImages(record: ProductRecord): string[] {
+  return record.assets
+    .filter((asset) => asset.mediaType === 'image')
+    .map((asset) => asset.url)
 }
 
 export async function search(q: string): Promise<Product[]> {
@@ -435,19 +444,17 @@ async function buildProductAggregate(
     getProductRecord(productId),
     getCatalogSKUs({ productId, limit: 500 }),
   ])
-  const images = record.assets
-    .filter((asset) => asset.mediaType === 'image')
-    .map((asset) => asset.url)
   const styleCode = record.styleCode
   const primary = record.categories.at(0)
 
+  const images = productImages(record)
   const colorways = record.colourways.map((colourway, index) => {
     const styleColor = colourwayBusinessId(colourway.slug)
+    const colourwaySkus = skuPage.items.filter(
+      (sku) => sku.colourway.id === colourway.id,
+    )
     const price =
-      skuPage.items.find((sku) => sku.colourway.id === colourway.id)?.price
-        .amount ??
-      record.minPrice?.amount ??
-      0
+      colourwaySkus.at(0)?.price.amount ?? record.minPrice?.amount ?? 0
     return {
       id: styleColor,
       productId: styleCode,
@@ -458,7 +465,10 @@ async function buildProductAggregate(
       price,
       isDefault: index === 0,
       onSale: false,
-      images: images.length > 0 ? images : ['https://placehold.co/800x800/png?text=No+Image'],
+      images:
+        images.length > 0
+          ? images
+          : ['https://placehold.co/800x800/png?text=No+Image'],
     }
   })
 
@@ -516,6 +526,36 @@ export const updateProductAggregate = (input: ProductAggregateInput) =>
       body: JSON.stringify(input),
     },
   )
+
+export interface PendingImageUpload {
+  clientId: string
+  file: File
+}
+
+export interface UploadedImage {
+  clientId: string
+  key: string
+  url: string
+}
+
+// Uploads all files selected in the editor as one authenticated backend batch.
+// The backend owns the UploadThing token and returns the durable CDN URLs.
+export async function uploadProductImages(
+  images: PendingImageUpload[],
+): Promise<UploadedImage[]> {
+  const body = new FormData()
+  body.append(
+    'metadata',
+    JSON.stringify(images.map(({ clientId }) => ({ clientId }))),
+  )
+  for (const { file } of images) body.append('files', file)
+
+  const result = await request<{ files: UploadedImage[] }>(
+    '/admin/products/assets/batch',
+    { method: 'POST', body },
+  )
+  return result.files
+}
 
 export const deleteProduct = (productId: string) =>
   request<{ success: boolean }>(
