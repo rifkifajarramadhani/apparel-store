@@ -28,7 +28,7 @@ export function AdminProductsPage() {
     .filter(
       (product) =>
         !search.q ||
-        `${product.name} ${product.id}`
+        `${product.name} ${product.id} ${product.publicId ?? ''}`
           .toLowerCase()
           .includes(search.q.toLowerCase()),
     )

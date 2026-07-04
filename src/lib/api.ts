@@ -194,13 +194,19 @@ function toQuery(f: ProductFilters): string {
   return s ? `?${s}` : ''
 }
 
+function colourwayBusinessId(slug: string) {
+  return slug.toUpperCase()
+}
+
 function toProduct(record: ProductRecord): Product {
   const primary = record.categories.at(0)
   const images = record.assets.filter((asset) => asset.mediaType === 'image')
   const minPrice = record.minPrice?.amount ?? 0
   const maxPrice = record.maxPrice?.amount ?? minPrice
+  const defaultColourway = record.colourways.at(0)
   return {
-    id: record.id,
+    id: record.styleCode,
+    publicId: record.id,
     slug: record.slug,
     name: record.name,
     subtitle: record.subtitle,
@@ -210,7 +216,7 @@ function toProduct(record: ProductRecord): Product {
         ? record.gender
         : 'men',
     type: record.productType ?? '',
-    categoryId: primary?.id ?? '',
+    categoryId: primary?.slug ?? '',
     categorySlug: primary?.slug ?? '',
     collectionIds: [],
     sizeScale: record.sizes.at(0)?.scaleCode ?? '',
@@ -227,12 +233,14 @@ function toProduct(record: ProductRecord): Product {
       ),
     ],
     swatches: record.colourways.map((item) => ({
-      styleColor: item.id,
+      styleColor: colourwayBusinessId(item.slug),
       hex: item.hexCode,
     })),
     thumbnailUrl: images.at(0)?.url ?? '',
     hoverImageUrl: images.at(1)?.url ?? images.at(0)?.url ?? '',
-    defaultColorwayId: record.colourways.at(0)?.id ?? '',
+    defaultColorwayId: defaultColourway
+      ? colourwayBusinessId(defaultColourway.slug)
+      : '',
     sizes: record.sizes.map((size) => size.code),
     description: record.description ?? '',
     publishedAt: '',
@@ -268,33 +276,39 @@ export async function getColorways(productId: string): Promise<Colorway[]> {
     getProductRecord(productId),
     getCatalogSKUs({ productId, limit: 100 }),
   ])
-  return product.colourways.map((colourway, index) => ({
-    id: colourway.id,
-    productId,
-    styleColor: colourway.id,
-    name: colourway.name,
-    colorFamily: colourway.colourFamily ?? '',
-    swatchHex: colourway.hexCode,
-    price:
-      skuPage.items.find((sku) => sku.colourway.id === colourway.id)?.price
-        .amount ??
-      product.minPrice?.amount ??
-      0,
-    isDefault: index === 0,
-    onSale: false,
-    images: product.assets
-      .filter((asset) => asset.mediaType === 'image')
-      .map((asset) => asset.url),
-    skus: skuPage.items
-      .filter((sku) => sku.colourway.id === colourway.id)
-      .map(toSKU),
-  }))
+  const images = product.assets
+    .filter((asset) => asset.mediaType === 'image')
+    .map((asset) => asset.url)
+  return product.colourways.map((colourway, index) => {
+    const styleColor = colourwayBusinessId(colourway.slug)
+    return {
+      id: styleColor,
+      productId: product.styleCode,
+      styleColor,
+      name: colourway.name,
+      colorFamily: colourway.colourFamily ?? '',
+      swatchHex: colourway.hexCode,
+      price:
+        skuPage.items.find((sku) => sku.colourway.id === colourway.id)?.price
+          .amount ??
+        product.minPrice?.amount ??
+        0,
+      isDefault: index === 0,
+      onSale: false,
+      images,
+      skus: skuPage.items
+        .filter((sku) => sku.colourway.id === colourway.id)
+        .map(toSKU),
+    }
+  })
 }
 
 export async function getCategoryTree(): Promise<Category[]> {
   const records = await getCatalogCategories()
   return records.map((item) => ({
-    ...item,
+    id: item.slug,
+    slug: item.slug,
+    name: item.name,
     parentId: item.parentId ?? null,
     gender: '',
     level: item.parentId ? 1 : 0,
@@ -331,7 +345,8 @@ export async function getSkus(
 function toSKU(sku: SKU): Sku {
   return {
     id: sku.id,
-    colorwayId: sku.colourway.id,
+    code: sku.code,
+    colorwayId: colourwayBusinessId(sku.colourway.slug),
     productId: sku.productId,
     size: sku.size.code,
     sizeLabel: sku.size.name,
@@ -413,10 +428,79 @@ export const setInventory = (input: {
 
 // ── admin catalog writes ──────────────────────────────────────────────────────
 
+async function buildProductAggregate(
+  productId: string,
+): Promise<ProductAggregateInput> {
+  const [record, skuPage] = await Promise.all([
+    getProductRecord(productId),
+    getCatalogSKUs({ productId, limit: 500 }),
+  ])
+  const images = record.assets
+    .filter((asset) => asset.mediaType === 'image')
+    .map((asset) => asset.url)
+  const styleCode = record.styleCode
+  const primary = record.categories.at(0)
+
+  const colorways = record.colourways.map((colourway, index) => {
+    const styleColor = colourwayBusinessId(colourway.slug)
+    const price =
+      skuPage.items.find((sku) => sku.colourway.id === colourway.id)?.price
+        .amount ??
+      record.minPrice?.amount ??
+      0
+    return {
+      id: styleColor,
+      productId: styleCode,
+      styleColor,
+      name: colourway.name,
+      colorFamily: colourway.colourFamily ?? '',
+      swatchHex: colourway.hexCode,
+      price,
+      isDefault: index === 0,
+      onSale: false,
+      images: images.length > 0 ? images : ['https://placehold.co/800x800/png?text=No+Image'],
+    }
+  })
+
+  const skus = skuPage.items.map((sku) => ({
+    id: sku.code,
+    colorwayId: colourwayBusinessId(sku.colourway.slug),
+    productId: styleCode,
+    size: sku.size.code,
+    sizeLabel: sku.size.name,
+    sizeScale: sku.size.scaleCode,
+    inStock: sku.available > 0,
+    stockQty: sku.onHand,
+    price: sku.price.amount,
+  }))
+
+  return {
+    product: {
+      id: styleCode,
+      slug: record.slug,
+      name: record.name,
+      subtitle: record.subtitle,
+      brand: record.brand.name,
+      gender:
+        record.gender === 'women' || record.gender === 'kids'
+          ? record.gender
+          : 'men',
+      type: record.productType ?? 'Apparel',
+      categoryId: primary?.slug ?? '',
+      categorySlug: primary?.slug ?? '',
+      collectionIds: [],
+      sizeScale: record.sizes.at(0)?.scaleCode ?? '',
+      basePrice: record.minPrice?.amount ?? 0,
+      description: record.description ?? 'No description provided.',
+      publishedAt: new Date().toISOString().slice(0, 10),
+    },
+    colorways,
+    skus,
+  }
+}
+
 export const getProductAggregate = (productId: string) =>
-  request<ProductAggregateInput>(
-    `/admin/products/${encodeURIComponent(productId)}`,
-  )
+  buildProductAggregate(productId)
 
 export const createProductAggregate = (input: ProductAggregateInput) =>
   request<ProductAggregateInput>('/admin/products', {

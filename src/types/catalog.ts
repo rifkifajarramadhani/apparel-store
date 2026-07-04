@@ -7,6 +7,7 @@ export interface Swatch {
 
 export interface Product {
   id: string // style code, e.g. AX-1001
+  publicId?: string // catalog public_id for API lookups when needed
   slug: string
   name: string
   subtitle: string
@@ -47,7 +48,8 @@ export interface Colorway {
 }
 
 export interface Sku {
-  id: string // styleColor-size
+  id: string // catalog public_id (checkout / inventory API)
+  code: string // business sku code, e.g. AX1001-010-M
   colorwayId: string
   productId: string
   size: string

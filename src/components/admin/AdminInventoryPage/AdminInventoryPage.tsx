@@ -53,7 +53,7 @@ export function AdminInventoryPage() {
   const filtered = skus.filter((sku) => {
     const matchesText =
       !search.q ||
-      `${sku.id} ${productNames.get(sku.productId)}`
+      `${sku.code} ${sku.id} ${productNames.get(sku.productId)}`
         .toLowerCase()
         .includes(search.q.toLowerCase())
     const matchesStock =
@@ -136,7 +136,7 @@ export function AdminInventoryPage() {
                     </Link>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {sku.id}
+                    {sku.code}
                   </TableCell>
                   <TableCell>{sku.sizeLabel}</TableCell>
                   <TableCell>

@@ -50,7 +50,7 @@ export const SKUSchema = z.object({
   id: PublicIDSchema,
   code: z.string(),
   barcode: z.string().optional(),
-  productId: PublicIDSchema,
+  productId: z.string().min(1),
   colourway: ColourwaySchema,
   size: SizeRecordSchema,
   price: MoneySchema,
