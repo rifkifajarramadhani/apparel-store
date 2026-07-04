@@ -4,6 +4,7 @@ import {
   getCategoryTree,
   getColorways,
   getCollections,
+  getOrders,
   getProductAggregate,
   getProductBySlug,
   getProducts,
@@ -24,6 +25,7 @@ export const queryKeys = {
     ['skus', filters] as const,
   productAggregate: (id: string) => ['admin', 'product', id] as const,
   search: (q: string) => ['search', q] as const,
+  orders: ['orders'] as const,
 }
 
 export const productsQuery = (f: ProductFilters = {}) =>
@@ -69,3 +71,6 @@ export const productAggregateQuery = (id: string) =>
 
 export const searchQuery = (q: string) =>
   queryOptions({ queryKey: queryKeys.search(q), queryFn: () => search(q) })
+
+export const ordersQuery = () =>
+  queryOptions({ queryKey: queryKeys.orders, queryFn: getOrders })

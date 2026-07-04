@@ -2,12 +2,14 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { Session, User } from '#/types/auth'
 
-// Session from json-server-auth. hasHydrated gates SSR-safe reads (see favorites.ts).
+// Session from the backend. hasHydrated gates SSR-safe reads (see favorites.ts).
 interface AuthState {
   accessToken: string | null
+  refreshToken: string | null
   user: User | null
   hasHydrated: boolean
   setSession: (s: Session) => void
+  setAccessToken: (accessToken: string) => void
   logout: () => void
 }
 
@@ -15,14 +17,21 @@ export const useAuth = create<AuthState>()(
   persist(
     (set) => ({
       accessToken: null,
+      refreshToken: null,
       user: null,
       hasHydrated: false,
-      setSession: ({ accessToken, user }) => set({ accessToken, user }),
-      logout: () => set({ accessToken: null, user: null }),
+      setSession: ({ accessToken, refreshToken, user }) =>
+        set({ accessToken, refreshToken, user }),
+      setAccessToken: (accessToken) => set({ accessToken }),
+      logout: () => set({ accessToken: null, refreshToken: null, user: null }),
     }),
     {
       name: 'auth',
-      partialize: (s) => ({ accessToken: s.accessToken, user: s.user }),
+      partialize: (s) => ({
+        accessToken: s.accessToken,
+        refreshToken: s.refreshToken,
+        user: s.user,
+      }),
       onRehydrateStorage: () => (state) => {
         if (state) state.hasHydrated = true
       },

@@ -19,17 +19,27 @@ function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
+  const [notice, setNotice] = useState<string | null>(null)
   const setSession = useAuth((s) => s.setSession)
   const navigate = useNavigate()
   const { redirect } = Route.useSearch()
 
   const mutation = useMutation({
-    mutationFn: () =>
-      mode === 'login'
-        ? login(email, password)
-        : register({ email, password, username: username || undefined }),
-    onSuccess: (session) => {
-      setSession(session)
+    mutationFn: async () => {
+      if (mode === 'login') {
+        return { kind: 'login' as const, session: await login(email, password) }
+      }
+      return {
+        kind: 'register' as const,
+        result: await register({ email, password, username }),
+      }
+    },
+    onSuccess: (out) => {
+      if (out.kind === 'register') {
+        setNotice(out.result.message)
+        return
+      }
+      setSession(out.session)
       if (redirect) {
         window.location.assign(safeAdminRedirect(redirect))
         return
@@ -56,6 +66,8 @@ function LoginPage() {
             <Label htmlFor="username">Username</Label>
             <Input
               id="username"
+              required
+              minLength={3}
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
@@ -81,13 +93,17 @@ function LoginPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+            autoComplete={
+              mode === 'login' ? 'current-password' : 'new-password'
+            }
           />
         </div>
 
         {mutation.isError && (
           <p className="text-sm text-destructive">{mutation.error.message}</p>
         )}
+
+        {notice && <p className="text-sm text-muted-foreground">{notice}</p>}
 
         <Button type="submit" className="w-full" disabled={mutation.isPending}>
           {mutation.isPending
@@ -102,6 +118,7 @@ function LoginPage() {
         type="button"
         onClick={() => {
           setMode(mode === 'login' ? 'register' : 'login')
+          setNotice(null)
           mutation.reset()
         }}
         className="mt-6 text-sm text-muted-foreground hover:text-foreground"

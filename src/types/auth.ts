@@ -1,4 +1,4 @@
-// The user object json-server-auth returns from /login and /register (password stripped).
+// User as returned by the backend's GET /api/auth/me.
 export interface User {
   id: number
   email: string
@@ -9,7 +9,10 @@ export interface User {
   tokenVersion?: number
 }
 
+// The backend issues a short-lived access token plus a refresh token; the user
+// is fetched separately from /auth/me and assembled into the session.
 export interface Session {
   accessToken: string
+  refreshToken: string
   user: User
 }

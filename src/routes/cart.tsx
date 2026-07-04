@@ -1,8 +1,12 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Minus, Plus, X } from 'lucide-react'
 import { Price } from '#/components/ui/price'
 import { useCart, useCartSubtotal } from '#/stores/cart'
 import { useHydrated } from '#/stores/useHydrated'
+import { useCurrentUser } from '#/stores/auth'
+import { createOrder } from '#/lib/api'
+import { queryKeys } from '#/lib/query'
 
 export const Route = createFileRoute('/cart')({ component: Cart })
 
@@ -11,7 +15,29 @@ function Cart() {
   const hydrated = useHydrated()
   const setQty = useCart((s) => s.setQty)
   const remove = useCart((s) => s.remove)
+  const clear = useCart((s) => s.clear)
   const subtotal = useCartSubtotal()
+  const user = useCurrentUser()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+
+  const checkout = useMutation({
+    mutationFn: () =>
+      createOrder(items.map((i) => ({ skuId: i.skuId, qty: i.qty }))),
+    onSuccess: () => {
+      clear()
+      void queryClient.invalidateQueries({ queryKey: queryKeys.orders })
+      navigate({ to: '/account' })
+    },
+  })
+
+  const onCheckout = () => {
+    if (!user) {
+      navigate({ to: '/login', search: { redirect: '/cart' } })
+      return
+    }
+    checkout.mutate()
+  }
 
   // Client-only state: render nothing definitive until hydrated (avoids mismatch).
   if (!hydrated)
@@ -37,7 +63,10 @@ function Cart() {
         <h1 className="display mb-6 text-3xl">Bag</h1>
         <ul>
           {items.map((i) => (
-            <li key={i.skuId} className="flex gap-4 border-b border-border py-5">
+            <li
+              key={i.skuId}
+              className="flex gap-4 border-b border-border py-5"
+            >
               <Link
                 to="/t/$slug/$styleColor"
                 params={{ slug: i.slug, styleColor: i.styleColor }}
@@ -47,7 +76,10 @@ function Cart() {
               <div className="flex-1">
                 <div className="flex justify-between">
                   <p className="font-medium">{i.name}</p>
-                  <button aria-label="Remove item" onClick={() => remove(i.skuId)}>
+                  <button
+                    aria-label="Remove item"
+                    onClick={() => remove(i.skuId)}
+                  >
                     <X className="h-4 w-4 text-muted-foreground" />
                   </button>
                 </div>
@@ -90,12 +122,22 @@ function Cart() {
           <span>Total</span>
           <Price amount={subtotal} />
         </div>
-        <button className="mt-4 w-full rounded-full bg-foreground py-4 font-semibold text-background">
-          Checkout
+        <button
+          onClick={onCheckout}
+          disabled={checkout.isPending}
+          className="mt-4 w-full rounded-full bg-foreground py-4 font-semibold text-background disabled:opacity-60"
+        >
+          {checkout.isPending
+            ? 'Placing order…'
+            : user
+              ? 'Checkout'
+              : 'Sign in to checkout'}
         </button>
-        <p className="mt-2 text-center text-xs text-muted-foreground">
-          Checkout is not implemented in this demo.
-        </p>
+        {checkout.isError && (
+          <p className="mt-2 text-center text-xs text-destructive">
+            {checkout.error.message}
+          </p>
+        )}
       </aside>
     </div>
   )

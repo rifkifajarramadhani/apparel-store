@@ -1,4 +1,4 @@
-// Mirrors the shape written by scripts/generate-seed.mjs.
+// Mirrors the catalog entities served by the backend (apparel-store-be).
 
 export interface Swatch {
   styleColor: string
