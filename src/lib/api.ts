@@ -406,7 +406,6 @@ export const getSizes = (): Promise<SizeRecord[]> =>
 
 export const setInventory = (input: {
   skuId: string
-  locationId: string
   onHand: number
   reserved: number
 }): Promise<SKU | null> =>
