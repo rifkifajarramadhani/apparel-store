@@ -4,6 +4,8 @@ dist
 dist-ssr
 *.local
 .env
+docker/nginx/ssl/*.crt
+docker/nginx/ssl/*.key
 .nitro
 .tanstack
 .wrangler

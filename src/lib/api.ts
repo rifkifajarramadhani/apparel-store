@@ -21,7 +21,9 @@ import type {
   SkuInput,
 } from '#/services/schemas/admin'
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api'
+const BASE = import.meta.env.SSR
+  ? (process.env.SERVER_API_URL ?? 'http://localhost:8080/api')
+  : (import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api')
 
 function authHeader(token: string | null): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {}

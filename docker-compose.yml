@@ -7,10 +7,39 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8080/api}
+      - VITE_API_URL=/api
+      - SERVER_API_URL=http://apparel-store-backend:8080/api
     volumes:
       - .:/app
       - /app/node_modules # keep container-installed deps over the bind mount
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://127.0.0.1:3000/').then(() => {}).catch(() => process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      start_period: 10s
+      retries: 30
+    networks:
+      shared:
+        aliases:
+          - apparel-store-frontend-dev
+
+  gateway-dev:
+    profiles: [dev]
+    image: nginx:1.27-alpine
+    init: true
+    depends_on:
+      web-dev:
+        condition: service_healthy
+    ports:
+      - '${DEV_GATEWAY_HTTP_PORT:-80}:80'
+      - '${DEV_GATEWAY_HTTPS_PORT:-443}:443'
+    volumes:
+      - ./docker/nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/ssl/dev.apparel-store.com.crt:/etc/nginx/ssl/dev.apparel-store.com.crt:ro
+      - ./docker/nginx/ssl/dev.apparel-store.com.key:/etc/nginx/ssl/dev.apparel-store.com.key:ro
+    networks:
+      - shared
+    restart: unless-stopped
 
   web-prod:
     profiles: [prod]
@@ -23,3 +52,8 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=production
+
+networks:
+  shared:
+    name: apparel-store-shared
+    external: true

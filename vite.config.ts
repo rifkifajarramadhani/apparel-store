@@ -11,6 +11,7 @@ import netlify from '@netlify/vite-plugin-tanstack-start'
 // orchestration that breaks non-Netlify runtimes (e.g. Bun in Docker).
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  server: { allowedHosts: ['dev.apparel-store.com'] },
   plugins: [
     devtools(),
     process.env.NETLIFY && netlify(),

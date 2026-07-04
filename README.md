@@ -30,16 +30,51 @@ docker compose --profile dev up --build
 docker compose --profile prod up --build
 ```
 
-`VITE_API_URL` (the Go backend, default `http://localhost:8080/api`) is read
-from your `.env` for both profiles. Because it is a `VITE_*` var, the production
-profile bakes it into the client bundle at build time, so rebuild the prod image
-after changing it.
+### Local HTTPS domain
 
-> **Backend reachability:** this URL is used both in the browser and during SSR.
-> The browser resolves `localhost` as your host; the SSR server resolves it as
-> the *container*. To have SSR reach a backend running on your host, point
-> `VITE_API_URL` at `http://host.docker.internal:8080/api`, or run the backend in
-> the same compose network and use its service name.
+The development profile includes an nginx gateway for
+`https://dev.apparel-store.com`. It sends `/api/*` to the Go backend and all
+other traffic to Vite, including hot-module-reload WebSockets.
+
+One-time setup (Arch Linux):
+
+```bash
+sudo pacman -S --needed mkcert
+mkcert -install
+mkdir -p docker/nginx/ssl
+mkcert -cert-file docker/nginx/ssl/dev.apparel-store.com.crt \
+  -key-file docker/nginx/ssl/dev.apparel-store.com.key \
+  dev.apparel-store.com
+docker network create apparel-store-shared
+```
+
+Ensure `/etc/hosts` contains `127.0.0.1 dev.apparel-store.com`. Then start the
+backend and frontend from their respective repositories:
+
+```bash
+# apparel-store-be
+docker compose up -d --build
+
+# apparel-store
+docker compose --profile dev up -d --build
+```
+
+The storefront is available at `https://dev.apparel-store.com`, the API at
+`https://dev.apparel-store.com/api`, and the gateway health check at
+`https://dev.apparel-store.com/healthz`. Direct ports 3000 and 8080 remain
+available for debugging. Only one local gateway can bind ports 80 and 443, so
+stop the Sportsman's Warehouse gateway (or any other web server using those
+ports) before starting this one.
+
+`VITE_API_URL` is the browser-facing Go backend URL. `SERVER_API_URL` is used
+during SSR, where relative browser URLs cannot be resolved. Because
+`VITE_API_URL` is a `VITE_*` var, the production profile bakes it into the
+client bundle at build time, so rebuild the prod image after changing it.
+
+> **Backend reachability:** the browser uses `VITE_API_URL`; SSR uses
+> `SERVER_API_URL`. When both services run in Docker, set `SERVER_API_URL` to the
+> backend's shared-network alias. For a backend on the host, use
+> `http://host.docker.internal:8080/api` instead.
 
 ## Testing
 
