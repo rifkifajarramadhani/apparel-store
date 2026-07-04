@@ -5,8 +5,8 @@ Welcome to your new TanStack Start app!
 To run this application:
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 # Building For Production
@@ -14,15 +14,39 @@ npm run dev
 To build this application for production:
 
 ```bash
-npm run build
+bun run build
 ```
+
+# Docker
+
+A single `docker-compose.yml` ships both a **dev** and a **production** profile,
+running on [Bun](https://bun.sh).
+
+```bash
+# Dev — Vite dev server with hot reload on http://localhost:3000
+docker compose --profile dev up --build
+
+# Production — SSR served by Bun on http://localhost:3000
+docker compose --profile prod up --build
+```
+
+`VITE_API_URL` (the Go backend, default `http://localhost:8080/api`) is read
+from your `.env` for both profiles. Because it is a `VITE_*` var, the production
+profile bakes it into the client bundle at build time, so rebuild the prod image
+after changing it.
+
+> **Backend reachability:** this URL is used both in the browser and during SSR.
+> The browser resolves `localhost` as your host; the SSR server resolves it as
+> the *container*. To have SSR reach a backend running on your host, point
+> `VITE_API_URL` at `http://host.docker.internal:8080/api`, or run the backend in
+> the same compose network and use its service name.
 
 ## Testing
 
 This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
 
 ```bash
-npm run test
+bun run test
 ```
 
 ## Styling
