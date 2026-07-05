@@ -436,7 +436,10 @@ export const setInventory = (input: {
   onHand: number
   reserved: number
 }): Promise<SKU | null> =>
-  request('/inventory', { method: 'PUT', body: JSON.stringify(input) })
+  request(`/admin/skus/${encodeURIComponent(input.skuId)}/inventory`, {
+    method: 'PUT',
+    body: JSON.stringify({ onHand: input.onHand, reserved: input.reserved }),
+  })
 
 // ── admin catalog writes ──────────────────────────────────────────────────────
 
@@ -517,20 +520,62 @@ async function buildProductAggregate(
 export const getProductAggregate = (productId: string) =>
   buildProductAggregate(productId)
 
-export const createProductAggregate = (input: ProductAggregateInput) =>
-  request<ProductAggregateInput>('/admin/products', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  })
+function productAggregateRequest(input: ProductAggregateInput) {
+  return {
+    product: {
+      id: input.product.id,
+      slug: input.product.slug,
+      name: input.product.name,
+      subtitle: input.product.subtitle,
+      brand: input.product.brand,
+      gender: input.product.gender,
+      type: input.product.type,
+      categorySlug: input.product.categorySlug,
+      sizeScale: input.product.sizeScale,
+      basePrice: input.product.basePrice,
+      description: input.product.description,
+      publishedAt: input.product.publishedAt,
+    },
+    colorways: input.colorways.map((colorway) => ({
+      id: colorway.id,
+      name: colorway.name,
+      swatchHex: colorway.swatchHex,
+      price: colorway.price,
+      isDefault: colorway.isDefault,
+    })),
+    skus: input.skus.map((sku) => ({
+      id: sku.id,
+      colorwayId: sku.colorwayId,
+      size: sku.size,
+      sizeScale: sku.sizeScale,
+      stockQty: sku.stockQty,
+      price: sku.price,
+    })),
+    images: input.images.map((image) => ({
+      url: image.url,
+      colorwayId: image.colorwayId ?? undefined,
+    })),
+  }
+}
 
-export const updateProductAggregate = (input: ProductAggregateInput) =>
-  request<ProductAggregateInput>(
+export const createProductAggregate = async (input: ProductAggregateInput) => {
+  await request('/admin/products', {
+    method: 'POST',
+    body: JSON.stringify(productAggregateRequest(input)),
+  })
+  return input
+}
+
+export const updateProductAggregate = async (input: ProductAggregateInput) => {
+  await request(
     `/admin/products/${encodeURIComponent(input.product.id)}`,
     {
       method: 'PUT',
-      body: JSON.stringify(input),
+      body: JSON.stringify(productAggregateRequest(input)),
     },
   )
+  return input
+}
 
 export interface PendingImageUpload {
   clientId: string
