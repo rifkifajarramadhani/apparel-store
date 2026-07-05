@@ -23,9 +23,7 @@ export const CategoryRecordSchema = z.object({
 
 export const ColourwaySchema = z.object({
   id: PublicIDSchema,
-  slug: z.string(),
   name: z.string(),
-  colourFamily: z.string().optional(),
   hexCode: z.string().regex(/^#[0-9a-fA-F]{6}$/),
 })
 

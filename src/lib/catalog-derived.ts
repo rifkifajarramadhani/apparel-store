@@ -30,9 +30,7 @@ export function deriveProduct({
     maxPrice: Math.max(...prices),
     badges,
     colorwayCount: colorways.length,
-    colorFamilies: [
-      ...new Set(colorways.map((colorway) => colorway.colorFamily)),
-    ],
+    colorFamilies: [...new Set(colorways.map((colorway) => colorway.name))],
     swatches: colorways.map((colorway) => ({
       styleColor: colorway.styleColor,
       hex: colorway.swatchHex,

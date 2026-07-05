@@ -138,7 +138,7 @@ function Pdp() {
           />
 
           <div className="mt-6">
-            <p className="eyebrow mb-2">Colour — {active.colorFamily}</p>
+            <p className="eyebrow mb-2">Colour — {active.name}</p>
             <SwatchList
               colorways={colorways}
               activeStyleColor={active.styleColor}
@@ -181,7 +181,7 @@ function Pdp() {
               {product.description}
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Style: {active.styleColor}
+              Style: {active.name}
             </p>
           </details>
           <details className="border-t border-border py-4">

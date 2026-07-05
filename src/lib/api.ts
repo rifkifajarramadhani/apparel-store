@@ -197,10 +197,6 @@ function toQuery(f: ProductFilters): string {
   return s ? `?${s}` : ''
 }
 
-function colourwayBusinessId(slug: string) {
-  return slug.toUpperCase()
-}
-
 function toProduct(record: ProductRecord): Product {
   const primary = record.categories.at(0)
   const minPrice = record.minPrice?.amount ?? 0
@@ -228,22 +224,14 @@ function toProduct(record: ProductRecord): Product {
     maxPrice,
     badges: [],
     colorwayCount: record.colourways.length,
-    colorFamilies: [
-      ...new Set(
-        record.colourways.flatMap((item) =>
-          item.colourFamily ? [item.colourFamily] : [],
-        ),
-      ),
-    ],
+    colorFamilies: [...new Set(record.colourways.map((item) => item.name))],
     swatches: record.colourways.map((item) => ({
-      styleColor: colourwayBusinessId(item.slug),
+      styleColor: item.id,
       hex: item.hexCode,
     })),
     thumbnailUrl: images.at(0) ?? NO_IMAGE,
     hoverImageUrl: images.at(1) ?? images.at(0) ?? NO_IMAGE,
-    defaultColorwayId: defaultColourway
-      ? colourwayBusinessId(defaultColourway.slug)
-      : '',
+    defaultColorwayId: defaultColourway ? defaultColourway.id : '',
     sizes: record.sizes.map((size) => size.code),
     description: record.description ?? '',
     publishedAt: '',
@@ -280,7 +268,7 @@ export async function getColorways(productId: string): Promise<Colorway[]> {
     getCatalogSKUs({ productId, limit: 100 }),
   ])
   return product.colourways.map((colourway, index) => {
-    const styleColor = colourwayBusinessId(colourway.slug)
+    const styleColor = colourway.id
     const colourwaySkus = skuPage.items.filter(
       (sku) => sku.colourway.id === colourway.id,
     )
@@ -289,7 +277,6 @@ export async function getColorways(productId: string): Promise<Colorway[]> {
       productId: product.styleCode,
       styleColor,
       name: colourway.name,
-      colorFamily: colourway.colourFamily ?? '',
       swatchHex: colourway.hexCode,
       price:
         skuPage.items.find((sku) => sku.colourway.id === colourway.id)?.price
@@ -347,7 +334,7 @@ function toSKU(sku: SKU): Sku {
   return {
     id: sku.id,
     code: sku.code,
-    colorwayId: colourwayBusinessId(sku.colourway.slug),
+    colorwayId: sku.colourway.id,
     productId: sku.productId,
     size: sku.size.code,
     sizeLabel: sku.size.name,
@@ -462,15 +449,9 @@ async function buildProductAggregate(
   ])
   const styleCode = record.styleCode
   const primary = record.categories.at(0)
-  const colorwayIdByPublicId = new Map(
-    record.colourways.map((colourway) => [
-      colourway.id,
-      colourwayBusinessId(colourway.slug),
-    ]),
-  )
 
   const colorways = record.colourways.map((colourway, index) => {
-    const styleColor = colourwayBusinessId(colourway.slug)
+    const styleColor = colourway.id
     const colourwaySkus = skuPage.items.filter(
       (sku) => sku.colourway.id === colourway.id,
     )
@@ -481,7 +462,6 @@ async function buildProductAggregate(
       productId: styleCode,
       styleColor,
       name: colourway.name,
-      colorFamily: colourway.colourFamily ?? '',
       swatchHex: colourway.hexCode,
       price,
       isDefault: index === 0,
@@ -493,14 +473,12 @@ async function buildProductAggregate(
     .filter((asset) => asset.mediaType === 'image' && !isPlaceholderImage(asset.url))
     .map((asset) => ({
       url: asset.url,
-      colorwayId: asset.colourwayId
-        ? (colorwayIdByPublicId.get(asset.colourwayId) ?? null)
-        : null,
+      colorwayId: asset.colourwayId ?? null,
     }))
 
   const skus = skuPage.items.map((sku) => ({
     id: sku.code,
-    colorwayId: colourwayBusinessId(sku.colourway.slug),
+    colorwayId: sku.colourway.id,
     productId: styleCode,
     size: sku.size.code,
     sizeLabel: sku.size.name,

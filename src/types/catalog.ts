@@ -34,11 +34,10 @@ export interface Product {
 }
 
 export interface Colorway {
-  id: string // styleColor, e.g. AX1001-010
+  id: string // colourway public_id (global, shared across products)
   productId: string
-  styleColor: string
+  styleColor: string // same as id; kept for call-site compatibility
   name: string
-  colorFamily: string
   swatchHex: string
   price: number
   isDefault: boolean

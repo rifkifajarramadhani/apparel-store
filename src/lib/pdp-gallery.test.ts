@@ -8,7 +8,6 @@ function colorway(styleColor: string, images: string[]): Colorway {
     productId: 'product',
     styleColor,
     name: styleColor,
-    colorFamily: styleColor,
     swatchHex: '#000000',
     price: 100,
     isDefault: false,

@@ -9,8 +9,8 @@ const aggregate: ProductAggregateInput = {
     sizeScale: 'apparel-alpha', basePrice: 1000, description: 'A long enough test description.', publishedAt: '2026-01-01',
   },
   colorways: [
-    { id: 'AX1-010', productId: 'AX-1', styleColor: 'AX1-010', name: 'Black', colorFamily: 'Black', swatchHex: '#111111', price: 1000, isDefault: true, onSale: false },
-    { id: 'AX1-100', productId: 'AX-1', styleColor: 'AX1-100', name: 'White', colorFamily: 'White', swatchHex: '#ffffff', price: 800, isDefault: false, onSale: true },
+    { id: 'AX1-010', productId: 'AX-1', styleColor: 'AX1-010', name: 'Black', swatchHex: '#111111', price: 1000, isDefault: true, onSale: false },
+    { id: 'AX1-100', productId: 'AX-1', styleColor: 'AX1-100', name: 'White', swatchHex: '#ffffff', price: 800, isDefault: false, onSale: true },
   ],
   skus: [
     { id: 'AX1-010-S', colorwayId: 'AX1-010', productId: 'AX-1', size: 'S', sizeLabel: 'S', sizeScale: 'apparel-alpha', inStock: true, stockQty: 4, price: 1000 },

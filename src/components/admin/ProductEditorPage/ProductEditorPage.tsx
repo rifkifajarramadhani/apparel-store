@@ -126,7 +126,6 @@ function createInitialAggregate(): ProductAggregateInput {
         productId: id,
         styleColor,
         name: 'Black',
-        colorFamily: 'Black',
         swatchHex: '#111111',
         price: 0,
         isDefault: true,
@@ -348,7 +347,6 @@ function ProductEditor({
       productId: draft.product.id,
       styleColor: id,
       name: 'New colorway',
-      colorFamily: 'Black',
       swatchHex: '#111111',
       price: draft.product.basePrice,
       isDefault: false,
@@ -925,14 +923,6 @@ function ProductEditor({
                 </Field>
                 <Field label="Style color">
                   <Input value={selected.styleColor} disabled />
-                </Field>
-                <Field label="Color family">
-                  <Input
-                    value={selected.colorFamily}
-                    onChange={(event) =>
-                      updateColorway({ colorFamily: event.target.value })
-                    }
-                  />
                 </Field>
                 <Field label="Swatch hex">
                   <Input

@@ -31,7 +31,6 @@ export const ColorwayInputSchema = z.object({
   productId: id,
   styleColor: id,
   name: z.string().trim().min(2).max(160),
-  colorFamily: z.string().trim().min(2).max(40),
   swatchHex: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   price: z.coerce.number().int().nonnegative(),
   isDefault: z.boolean(),
