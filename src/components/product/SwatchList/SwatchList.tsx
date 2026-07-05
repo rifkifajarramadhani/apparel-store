@@ -26,7 +26,19 @@ export function SwatchList({
               : 'border-transparent hover:border-border',
           )}
         >
-          <img src={cw.images[0]} alt="" className="h-full w-full object-cover" />
+          {cw.images[0] ? (
+            <img
+              src={cw.images[0]}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="block h-full w-full"
+              style={{ backgroundColor: cw.swatchHex }}
+            />
+          )}
         </button>
       ))}
     </div>

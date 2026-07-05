@@ -1,18 +1,15 @@
 import { createFileRoute, Link, notFound } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Heart } from 'lucide-react'
-import {
-  colorwaysQuery,
-  productBySlugQuery,
-  productsQuery,
-} from '#/lib/query'
+import { colorwaysQuery, productBySlugQuery, productsQuery } from '#/lib/query'
 import { Gallery } from '#/components/product/Gallery/Gallery'
 import { SwatchList } from '#/components/product/SwatchList/SwatchList'
 import { SizeGrid } from '#/components/product/SizeGrid/SizeGrid'
 import { ProductGrid } from '#/components/product/ProductGrid/ProductGrid'
 import { Price } from '#/components/ui/price'
 import { cn } from '#/lib/utils'
+import { buildColourwayGallery } from '#/lib/pdp-gallery'
 import { useCart } from '#/stores/cart'
 import { useFavorites, useIsFavorite } from '#/stores/favorites'
 
@@ -24,9 +21,15 @@ export const Route = createFileRoute('/t/$slug')({
     if (!product) throw notFound()
     await Promise.all([
       context.queryClient.ensureQueryData(colorwaysQuery(product.id)),
-      context.queryClient.ensureQueryData(productsQuery({ gender: product.gender })),
+      context.queryClient.ensureQueryData(
+        productsQuery({ gender: product.gender }),
+      ),
     ])
-    return { productId: product.id, title: product.name, description: product.subtitle }
+    return {
+      productId: product.id,
+      title: product.name,
+      description: product.subtitle,
+    }
   },
   head: ({ loaderData }) => ({
     meta: loaderData
@@ -43,13 +46,21 @@ function Pdp() {
   const { slug } = Route.useParams()
   const product = useSuspenseQuery(productBySlugQuery(slug)).data!
   const colorways = useSuspenseQuery(colorwaysQuery(product.id)).data
-  const related = useSuspenseQuery(
-    productsQuery({ gender: product.gender }),
-  ).data.items.filter((p) => p.id !== product.id).slice(0, 4)
+  const related = useSuspenseQuery(productsQuery({ gender: product.gender }))
+    .data.items.filter((p) => p.id !== product.id)
+    .slice(0, 4)
 
   const [active, setActive] = useState(
     () => colorways.find((cw) => cw.isDefault) ?? colorways[0],
   )
+  const galleryImages = useMemo(
+    () => buildColourwayGallery(colorways),
+    [colorways],
+  )
+  const selectStyleColor = (styleColor: string) => {
+    const colorway = colorways.find((item) => item.styleColor === styleColor)
+    if (colorway) setActive(colorway)
+  }
   const skus = active.skus ?? []
 
   // Show the full, backend-sorted size range for every colourway; sizes the
@@ -100,14 +111,22 @@ function Pdp() {
     <div className="mx-auto max-w-[1200px] px-4 py-6 md:px-8">
       <nav className="mb-4 text-xs text-muted-foreground">
         <Link to="/">Home</Link> /{' '}
-        <Link to="/c/$categorySlug" params={{ categorySlug: product.categorySlug }}>
+        <Link
+          to="/c/$categorySlug"
+          params={{ categorySlug: product.categorySlug }}
+        >
           {product.type}
         </Link>{' '}
         / <span>{product.name}</span>
       </nav>
 
       <div className="grid items-start gap-8 md:grid-cols-2">
-        <Gallery images={active.images} alt={active.name} />
+        <Gallery
+          images={galleryImages}
+          alt={product.name}
+          activeStyleColor={active.styleColor}
+          onSelectStyleColor={selectStyleColor}
+        />
 
         <div className="md:sticky md:top-20 md:self-start">
           <h1 className="display text-3xl">{product.name}</h1>
@@ -155,14 +174,20 @@ function Pdp() {
           </div>
 
           <details className="mt-8 border-t border-border py-4" open>
-            <summary className="cursor-pointer font-semibold">Product Details</summary>
-            <p className="mt-2 text-sm text-muted-foreground">{product.description}</p>
+            <summary className="cursor-pointer font-semibold">
+              Product Details
+            </summary>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {product.description}
+            </p>
             <p className="mt-2 text-sm text-muted-foreground">
               Style: {active.styleColor}
             </p>
           </details>
           <details className="border-t border-border py-4">
-            <summary className="cursor-pointer font-semibold">Shipping & Returns</summary>
+            <summary className="cursor-pointer font-semibold">
+              Shipping & Returns
+            </summary>
             <p className="mt-2 text-sm text-muted-foreground">
               Free standard shipping and 30-day returns on all orders.
             </p>
