@@ -44,6 +44,8 @@ export const AssetSchema = z.object({
   altText: z.string().optional(),
   role: z.string(),
   sortOrder: z.number().int().nonnegative(),
+  colourwayId: PublicIDSchema.optional(),
+  skuId: PublicIDSchema.optional(),
 })
 
 export const SKUSchema = z.object({

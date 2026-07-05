@@ -25,11 +25,7 @@ export function ProductCard({ product }: { product: Product }) {
         <Heart className={cn('h-4 w-4', isFav && 'fill-foreground')} />
       </button>
 
-      <Link
-        to="/t/$slug/$styleColor"
-        params={{ slug: product.slug, styleColor }}
-        className="block"
-      >
+      <Link to="/t/$slug" params={{ slug: product.slug }} className="block">
         <div className="relative aspect-square overflow-hidden bg-secondary">
           <img
             src={product.thumbnailUrl}

@@ -67,10 +67,7 @@ function Cart() {
               key={i.skuId}
               className="flex gap-4 border-b border-border py-5"
             >
-              <Link
-                to="/t/$slug/$styleColor"
-                params={{ slug: i.slug, styleColor: i.styleColor }}
-              >
+              <Link to="/t/$slug" params={{ slug: i.slug }}>
                 <img src={i.image} alt="" className="h-28 w-28 object-cover" />
               </Link>
               <div className="flex-1">

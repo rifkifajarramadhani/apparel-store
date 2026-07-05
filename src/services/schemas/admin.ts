@@ -21,6 +21,11 @@ export const ProductEditorSearchSchema = z.object({
   colorwayId: z.string().optional(),
 })
 
+export const ProductImageInputSchema = z.object({
+  url,
+  colorwayId: id.nullable(),
+})
+
 export const ColorwayInputSchema = z.object({
   id,
   productId: id,
@@ -31,7 +36,6 @@ export const ColorwayInputSchema = z.object({
   price: z.coerce.number().int().nonnegative(),
   isDefault: z.boolean(),
   onSale: z.boolean(),
-  images: z.array(url).min(1).max(8),
 })
 
 export const SkuInputSchema = z.object({
@@ -71,8 +75,9 @@ export const ProductAggregateInputSchema = z
     product: ProductInputSchema,
     colorways: z.array(ColorwayInputSchema).min(1),
     skus: z.array(SkuInputSchema).min(1),
+    images: z.array(ProductImageInputSchema).min(1).max(64),
   })
-  .superRefine(({ product, colorways, skus }, ctx) => {
+  .superRefine(({ product, colorways, skus, images }, ctx) => {
     if (colorways.filter((colorway) => colorway.isDefault).length !== 1) {
       ctx.addIssue({
         code: 'custom',
@@ -97,6 +102,16 @@ export const ProductAggregateInputSchema = z
         message: 'SKUs must belong to a submitted colorway',
       })
     }
+    if (
+      images.some(
+        (image) => image.colorwayId !== null && !colorwayIds.has(image.colorwayId),
+      )
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Images must belong to a submitted colorway',
+      })
+    }
   })
 
 export const CategoryInputSchema = z.object({
@@ -117,6 +132,7 @@ export const CollectionInputSchema = z.object({
 export type ProductAggregateInput = z.infer<typeof ProductAggregateInputSchema>
 export type ProductInput = z.infer<typeof ProductInputSchema>
 export type ColorwayInput = z.infer<typeof ColorwayInputSchema>
+export type ProductImageInput = z.infer<typeof ProductImageInputSchema>
 export type SkuInput = z.infer<typeof SkuInputSchema>
 export type CategoryInput = z.infer<typeof CategoryInputSchema>
 export type CollectionInput = z.infer<typeof CollectionInputSchema>

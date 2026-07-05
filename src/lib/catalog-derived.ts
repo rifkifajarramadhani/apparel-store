@@ -11,12 +11,18 @@ export function deriveProduct({
   product,
   colorways,
   skus,
+  images,
 }: ProductAggregateInput): Product {
   const defaultColorway =
     colorways.find((colorway) => colorway.isDefault) ?? colorways[0]
   const prices = colorways.map((colorway) => colorway.price)
   const sizes = [...new Set(skus.map((sku) => sku.size))]
   const badges = colorways.some((colorway) => colorway.onSale) ? ['Sale'] : []
+  const coverImages = images.filter(
+    (image) =>
+      image.colorwayId === defaultColorway.id || image.colorwayId === null,
+  )
+  const relevant = coverImages.length > 0 ? coverImages : images
 
   return {
     ...product,
@@ -31,8 +37,8 @@ export function deriveProduct({
       styleColor: colorway.styleColor,
       hex: colorway.swatchHex,
     })),
-    thumbnailUrl: defaultColorway.images[0],
-    hoverImageUrl: defaultColorway.images[1] ?? defaultColorway.images[0],
+    thumbnailUrl: relevant[0].url,
+    hoverImageUrl: (relevant[1] ?? relevant[0]).url,
     defaultColorwayId: defaultColorway.id,
     sizes,
   }

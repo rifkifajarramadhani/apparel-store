@@ -30,6 +30,7 @@ import {
   cursorPageSchema,
 } from '#/services/schemas/catalog'
 import type {
+  Asset,
   Brand,
   CategoryRecord,
   Colourway,
@@ -202,10 +203,10 @@ function colourwayBusinessId(slug: string) {
 
 function toProduct(record: ProductRecord): Product {
   const primary = record.categories.at(0)
-  const images = productImages(record)
   const minPrice = record.minPrice?.amount ?? 0
   const maxPrice = record.maxPrice?.amount ?? minPrice
   const defaultColourway = record.colourways.at(0)
+  const images = assetsForColourway(record, defaultColourway?.id)
   return {
     id: record.styleCode,
     publicId: record.id,
@@ -278,7 +279,6 @@ export async function getColorways(productId: string): Promise<Colorway[]> {
     getProductRecord(productId),
     getCatalogSKUs({ productId, limit: 100 }),
   ])
-  const images = productImages(product)
   return product.colourways.map((colourway, index) => {
     const styleColor = colourwayBusinessId(colourway.slug)
     const colourwaySkus = skuPage.items.filter(
@@ -298,7 +298,7 @@ export async function getColorways(productId: string): Promise<Colorway[]> {
         0,
       isDefault: index === 0,
       onSale: false,
-      images,
+      images: assetsForColourway(product, colourway.id),
       skus: colourwaySkus.map(toSKU),
     }
   })
@@ -364,13 +364,22 @@ export const isPlaceholderImage = (url: string) => url.includes('placehold.co')
 
 const NO_IMAGE = 'https://placehold.co/800x800/png?text=No+Image'
 
-// Images are stored product-level; all colourways share them.
 // Backend already orders record.assets by role, sortOrder.
-function productImages(record: ProductRecord): string[] {
-  return record.assets
-    .filter((asset) => asset.mediaType === 'image')
-    .map((asset) => asset.url)
-    .filter((url) => !isPlaceholderImage(url))
+// Shared assets (no colourwayId) apply to every colourway and are always
+// included alongside the colourway's own tagged assets.
+export function assetsForColourway(
+  record: ProductRecord,
+  colourwayId?: string,
+): string[] {
+  const isUsable = (asset: Asset) =>
+    asset.mediaType === 'image' && !isPlaceholderImage(asset.url)
+  const scoped = record.assets.filter(
+    (asset) => isUsable(asset) && asset.colourwayId === colourwayId,
+  )
+  const shared = record.assets.filter(
+    (asset) => isUsable(asset) && !asset.colourwayId,
+  )
+  return [...new Set([...scoped, ...shared].map((asset) => asset.url))]
 }
 
 export async function search(q: string): Promise<Product[]> {
@@ -453,8 +462,13 @@ async function buildProductAggregate(
   ])
   const styleCode = record.styleCode
   const primary = record.categories.at(0)
+  const colorwayIdByPublicId = new Map(
+    record.colourways.map((colourway) => [
+      colourway.id,
+      colourwayBusinessId(colourway.slug),
+    ]),
+  )
 
-  const images = productImages(record)
   const colorways = record.colourways.map((colourway, index) => {
     const styleColor = colourwayBusinessId(colourway.slug)
     const colourwaySkus = skuPage.items.filter(
@@ -472,10 +486,17 @@ async function buildProductAggregate(
       price,
       isDefault: index === 0,
       onSale: false,
-      images:
-        images.length > 0 ? images : [NO_IMAGE],
     }
   })
+
+  const images = record.assets
+    .filter((asset) => asset.mediaType === 'image' && !isPlaceholderImage(asset.url))
+    .map((asset) => ({
+      url: asset.url,
+      colorwayId: asset.colourwayId
+        ? (colorwayIdByPublicId.get(asset.colourwayId) ?? null)
+        : null,
+    }))
 
   const skus = skuPage.items.map((sku) => ({
     id: sku.code,
@@ -511,6 +532,7 @@ async function buildProductAggregate(
     },
     colorways,
     skus,
+    images: images.length > 0 ? images : [{ url: NO_IMAGE, colorwayId: null }],
   }
 }
 

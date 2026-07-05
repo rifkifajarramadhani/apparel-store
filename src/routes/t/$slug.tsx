@@ -16,7 +16,7 @@ import { cn } from '#/lib/utils'
 import { useCart } from '#/stores/cart'
 import { useFavorites, useIsFavorite } from '#/stores/favorites'
 
-export const Route = createFileRoute('/t/$slug/$styleColor')({
+export const Route = createFileRoute('/t/$slug')({
   loader: async ({ context, params }) => {
     const product = await context.queryClient.ensureQueryData(
       productBySlugQuery(params.slug),
@@ -40,19 +40,42 @@ export const Route = createFileRoute('/t/$slug/$styleColor')({
 })
 
 function Pdp() {
-  const { slug, styleColor } = Route.useParams()
+  const { slug } = Route.useParams()
   const product = useSuspenseQuery(productBySlugQuery(slug)).data!
   const colorways = useSuspenseQuery(colorwaysQuery(product.id)).data
   const related = useSuspenseQuery(
     productsQuery({ gender: product.gender }),
   ).data.items.filter((p) => p.id !== product.id).slice(0, 4)
 
-  const active =
-    colorways.find((cw) => cw.styleColor === styleColor) ?? colorways[0]
+  const [active, setActive] = useState(
+    () => colorways.find((cw) => cw.isDefault) ?? colorways[0],
+  )
   const skus = active.skus ?? []
 
+  // Show the full, backend-sorted size range for every colourway; sizes the
+  // active colourway doesn't carry render as disabled placeholders instead
+  // of disappearing from the grid.
+  const sizeLabels = new Map(
+    colorways.flatMap((cw) => cw.skus ?? []).map((s) => [s.size, s.sizeLabel]),
+  )
+  const sizes = product.sizes.map(
+    (code) =>
+      skus.find((s) => s.size === code) ?? {
+        id: `oos-${active.id}-${code}`,
+        code: '',
+        colorwayId: active.styleColor,
+        productId: product.id,
+        size: code,
+        sizeLabel: sizeLabels.get(code) ?? code,
+        sizeScale: product.sizeScale,
+        inStock: false,
+        stockQty: 0,
+        price: active.price,
+      },
+  )
+
   const [selected, setSelected] = useState<string | null>(null)
-  useEffect(() => setSelected(null), [styleColor])
+  useEffect(() => setSelected(null), [active.id])
 
   const addToCart = useCart((s) => s.add)
   const isFav = useIsFavorite(active.styleColor)
@@ -99,14 +122,14 @@ function Pdp() {
             <p className="eyebrow mb-2">Colour — {active.colorFamily}</p>
             <SwatchList
               colorways={colorways}
-              slug={slug}
               activeStyleColor={active.styleColor}
+              onSelect={setActive}
             />
           </div>
 
           <div className="mt-6">
             <p className="eyebrow mb-2">Select Size</p>
-            <SizeGrid skus={skus} selected={selected} onSelect={setSelected} />
+            <SizeGrid skus={sizes} selected={selected} onSelect={setSelected} />
           </div>
 
           <div className="mt-6 space-y-3">

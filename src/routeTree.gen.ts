@@ -18,13 +18,13 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AccountRouteImport } from './routes/account'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
+import { Route as TSlugRouteImport } from './routes/t/$slug'
 import { Route as CCategorySlugRouteImport } from './routes/c/$categorySlug'
 import { Route as AdminProductsRouteImport } from './routes/admin.products'
 import { Route as AdminInventoryRouteImport } from './routes/admin.inventory'
 import { Route as AdminCollectionsRouteImport } from './routes/admin.collections'
 import { Route as AdminCategoriesRouteImport } from './routes/admin.categories'
 import { Route as AdminProductsIndexRouteImport } from './routes/admin.products.index'
-import { Route as TSlugStyleColorRouteImport } from './routes/t/$slug.$styleColor'
 import { Route as AdminProductsNewRouteImport } from './routes/admin.products.new'
 import { Route as AdminProductsProductIdRouteImport } from './routes/admin.products.$productId'
 
@@ -73,6 +73,11 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminRoute,
 } as any)
+const TSlugRoute = TSlugRouteImport.update({
+  id: '/t/$slug',
+  path: '/t/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CCategorySlugRoute = CCategorySlugRouteImport.update({
   id: '/c/$categorySlug',
   path: '/c/$categorySlug',
@@ -103,11 +108,6 @@ const AdminProductsIndexRoute = AdminProductsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdminProductsRoute,
 } as any)
-const TSlugStyleColorRoute = TSlugStyleColorRouteImport.update({
-  id: '/t/$slug/$styleColor',
-  path: '/t/$slug/$styleColor',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AdminProductsNewRoute = AdminProductsNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -133,10 +133,10 @@ export interface FileRoutesByFullPath {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/products': typeof AdminProductsRouteWithChildren
   '/c/$categorySlug': typeof CCategorySlugRoute
+  '/t/$slug': typeof TSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/products/$productId': typeof AdminProductsProductIdRoute
   '/admin/products/new': typeof AdminProductsNewRoute
-  '/t/$slug/$styleColor': typeof TSlugStyleColorRoute
   '/admin/products/': typeof AdminProductsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -151,10 +151,10 @@ export interface FileRoutesByTo {
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/inventory': typeof AdminInventoryRoute
   '/c/$categorySlug': typeof CCategorySlugRoute
+  '/t/$slug': typeof TSlugRoute
   '/admin': typeof AdminIndexRoute
   '/admin/products/$productId': typeof AdminProductsProductIdRoute
   '/admin/products/new': typeof AdminProductsNewRoute
-  '/t/$slug/$styleColor': typeof TSlugStyleColorRoute
   '/admin/products': typeof AdminProductsIndexRoute
 }
 export interface FileRoutesById {
@@ -172,10 +172,10 @@ export interface FileRoutesById {
   '/admin/inventory': typeof AdminInventoryRoute
   '/admin/products': typeof AdminProductsRouteWithChildren
   '/c/$categorySlug': typeof CCategorySlugRoute
+  '/t/$slug': typeof TSlugRoute
   '/admin/': typeof AdminIndexRoute
   '/admin/products/$productId': typeof AdminProductsProductIdRoute
   '/admin/products/new': typeof AdminProductsNewRoute
-  '/t/$slug/$styleColor': typeof TSlugStyleColorRoute
   '/admin/products/': typeof AdminProductsIndexRoute
 }
 export interface FileRouteTypes {
@@ -194,10 +194,10 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/products'
     | '/c/$categorySlug'
+    | '/t/$slug'
     | '/admin/'
     | '/admin/products/$productId'
     | '/admin/products/new'
-    | '/t/$slug/$styleColor'
     | '/admin/products/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -212,10 +212,10 @@ export interface FileRouteTypes {
     | '/admin/collections'
     | '/admin/inventory'
     | '/c/$categorySlug'
+    | '/t/$slug'
     | '/admin'
     | '/admin/products/$productId'
     | '/admin/products/new'
-    | '/t/$slug/$styleColor'
     | '/admin/products'
   id:
     | '__root__'
@@ -232,10 +232,10 @@ export interface FileRouteTypes {
     | '/admin/inventory'
     | '/admin/products'
     | '/c/$categorySlug'
+    | '/t/$slug'
     | '/admin/'
     | '/admin/products/$productId'
     | '/admin/products/new'
-    | '/t/$slug/$styleColor'
     | '/admin/products/'
   fileRoutesById: FileRoutesById
 }
@@ -249,7 +249,7 @@ export interface RootRouteChildren {
   SaleRoute: typeof SaleRoute
   SearchRoute: typeof SearchRoute
   CCategorySlugRoute: typeof CCategorySlugRoute
-  TSlugStyleColorRoute: typeof TSlugStyleColorRoute
+  TSlugRoute: typeof TSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -317,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/t/$slug': {
+      id: '/t/$slug'
+      path: '/t/$slug'
+      fullPath: '/t/$slug'
+      preLoaderRoute: typeof TSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/c/$categorySlug': {
       id: '/c/$categorySlug'
       path: '/c/$categorySlug'
@@ -358,13 +365,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/products/'
       preLoaderRoute: typeof AdminProductsIndexRouteImport
       parentRoute: typeof AdminProductsRoute
-    }
-    '/t/$slug/$styleColor': {
-      id: '/t/$slug/$styleColor'
-      path: '/t/$slug/$styleColor'
-      fullPath: '/t/$slug/$styleColor'
-      preLoaderRoute: typeof TSlugStyleColorRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/admin/products/new': {
       id: '/admin/products/new'
@@ -427,7 +427,7 @@ const rootRouteChildren: RootRouteChildren = {
   SaleRoute: SaleRoute,
   SearchRoute: SearchRoute,
   CCategorySlugRoute: CCategorySlugRoute,
-  TSlugStyleColorRoute: TSlugStyleColorRoute,
+  TSlugRoute: TSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

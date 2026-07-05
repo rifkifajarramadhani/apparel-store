@@ -1,24 +1,22 @@
-import { Link } from '@tanstack/react-router'
 import { cn } from '#/lib/utils'
 import type { Colorway } from '#/types/catalog'
 
-// Each swatch is a navigation to that colourway's deep link.
 export function SwatchList({
   colorways,
-  slug,
   activeStyleColor,
+  onSelect,
 }: {
   colorways: Colorway[]
-  slug: string
   activeStyleColor: string
+  onSelect: (colorway: Colorway) => void
 }) {
   return (
     <div className="flex flex-wrap gap-2">
       {colorways.map((cw) => (
-        <Link
+        <button
           key={cw.id}
-          to="/t/$slug/$styleColor"
-          params={{ slug, styleColor: cw.styleColor }}
+          type="button"
+          onClick={() => onSelect(cw)}
           aria-label={cw.name}
           aria-current={cw.styleColor === activeStyleColor}
           className={cn(
@@ -29,7 +27,7 @@ export function SwatchList({
           )}
         >
           <img src={cw.images[0]} alt="" className="h-full w-full object-cover" />
-        </Link>
+        </button>
       ))}
     </div>
   )
