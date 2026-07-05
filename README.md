@@ -26,9 +26,73 @@ running on [Bun](https://bun.sh).
 # Dev — Vite dev server with hot reload on http://localhost:3000
 docker compose --profile dev up --build
 
-# Production — SSR served by Bun on http://localhost:3000
+# Production — HTTPS gateway with Bun SSR and automatic certificate renewal
 docker compose --profile prod up --build
 ```
+
+### VPS production deployment
+
+The production profile serves the storefront at
+`https://apparel-store.rifkiramadhani.my.id`. Nginx terminates TLS, sends
+`/api/*` to the Go backend, and sends all other requests to the Bun SSR app.
+Requests for `www.apparel-store.rifkiramadhani.my.id` are redirected to the
+apex hostname.
+
+Before deploying, create DNS `A` records for both hostnames pointing to the
+VPS (and matching `AAAA` records if the VPS accepts IPv6 traffic). Allow inbound
+TCP ports 80 and 443, and ensure no other service is using them.
+
+Create the shared network if it does not exist, then obtain the initial
+certificate while the production gateway is stopped:
+
+```bash
+docker network inspect apparel-store-shared >/dev/null 2>&1 || \
+  docker network create apparel-store-shared
+export CERTBOT_EMAIL=you@example.com
+docker compose --profile certbot run --rm --service-ports certbot-bootstrap
+```
+
+Start the backend first, then build and start the production storefront:
+
+```bash
+# In apparel-store-be
+docker compose up -d --build
+
+# In apparel-store
+docker compose --profile prod up -d --build
+```
+
+The frontend image bakes `/api` into the browser bundle. SSR connects directly
+to `http://apparel-store-backend:8080/api` through the shared Docker network.
+Rebuild `web-prod` after changing browser-facing build configuration:
+
+```bash
+docker compose --profile prod up -d --build web-prod
+```
+
+Set these values for the backend production environment so verification links,
+redirects, and CORS use the public storefront:
+
+```dotenv
+APP_PUBLIC_URL=https://apparel-store.rifkiramadhani.my.id
+APP_STOREFRONT_URL=https://apparel-store.rifkiramadhani.my.id
+APP_CORS_ORIGINS=https://apparel-store.rifkiramadhani.my.id
+```
+
+Certbot checks for renewal every 12 hours. Nginx reloads periodically to adopt
+renewed certificates. Verify the deployment and test renewal with:
+
+```bash
+curl -I http://apparel-store.rifkiramadhani.my.id
+curl -I https://www.apparel-store.rifkiramadhani.my.id
+curl https://apparel-store.rifkiramadhani.my.id/healthz
+curl 'https://apparel-store.rifkiramadhani.my.id/api/products?limit=1'
+docker compose --profile prod exec certbot-renew \
+  certbot renew --dry-run --webroot --webroot-path /var/www/certbot
+```
+
+Certificate bootstrap must be repeated only if the `certbot-certs` Docker
+volume is deleted. Back up that volume as part of the VPS backup policy.
 
 ### Local HTTPS domain
 
