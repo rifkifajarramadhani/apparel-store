@@ -76,8 +76,10 @@ services:
       - traefik.http.routers.apparel-web.tls=true
       - traefik.http.routers.apparel-web.tls.certresolver=letsencrypt
       - traefik.http.services.apparel-web.loadbalancer.server.port=3000
-      # Redirect www -> apex (preserves prior nginx behavior)
-      - traefik.http.routers.apparel-web.middlewares=apparel-www-redirect
+      # Redirect www -> apex (preserves prior nginx behavior), then apply the per-IP edge rate limit
+      - traefik.http.routers.apparel-web.middlewares=apparel-www-redirect,apparel-web-ratelimit
+      - traefik.http.middlewares.apparel-web-ratelimit.ratelimit.average=100
+      - traefik.http.middlewares.apparel-web-ratelimit.ratelimit.burst=200
       - "traefik.http.middlewares.apparel-www-redirect.redirectregex.regex=^https://www\\.(.+)"
       - "traefik.http.middlewares.apparel-www-redirect.redirectregex.replacement=https://$${1}"
       - traefik.http.middlewares.apparel-www-redirect.redirectregex.permanent=true
