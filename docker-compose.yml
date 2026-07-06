@@ -43,6 +43,7 @@ services:
 
   web-prod:
     profiles: [prod]
+    image: ghcr.io/rifkifajarramadhani/apparel-store:${IMAGE_TAG:-latest}
     build:
       context: .
       target: prod
